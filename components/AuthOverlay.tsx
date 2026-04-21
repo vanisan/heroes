@@ -1,15 +1,26 @@
 'use client';
 
+import React, { useState } from 'react';
 import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
 import { motion } from 'motion/react';
 import { LogIn, ShieldCheck } from 'lucide-react';
 
 export default function AuthOverlay() {
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   const handleLogin = async () => {
+    setLoginError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed', error);
+      if (error.code === 'auth/popup-blocked') {
+        setLoginError('Всплывающее окно заблокировано браузером. Пожалуйста, разрешите всплывающие окна для этого сайта.');
+      } else if (error.code === 'auth/unauthorized-domain') {
+        setLoginError('Домен не авторизован в Firebase Console. Добавьте ваш домен в список разрешенных.');
+      } else {
+        setLoginError('Не удалось войти. Попробуйте еще раз.');
+      }
     }
   };
 
@@ -35,6 +46,16 @@ export default function AuthOverlay() {
           <LogIn className="w-5 h-5" />
           Войти через Google
         </button>
+
+        {loginError && (
+          <motion.p 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 text-[10px] text-rose-500 font-bold bg-rose-500/10 p-2 rounded border border-rose-500/20"
+          >
+            {loginError}
+          </motion.p>
+        )}
         <p className="mt-6 text-[9px] text-slate-600 uppercase tracking-[0.2em] font-bold">
           Защищенная игровая сессия
         </p>
