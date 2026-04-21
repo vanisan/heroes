@@ -44,7 +44,7 @@ export default function HUD() {
   );
 }
 
-function ResourceBox({ icon, value, color, limit }: { icon: string, value: number, color: 'amber' | 'cyan', limit?: number }) {
+function ResourceBox({ icon, value, color, limit, label }: { icon: string, value: number, color: 'amber' | 'cyan', limit?: number, label?: string }) {
   const isNearLimit = limit && value >= limit;
   return (
     <div className={`flex flex-col bg-slate-900/50 rounded px-2 py-0.5 border border-slate-700 min-w-[70px] ${isNearLimit ? 'border-rose-500/50' : ''}`}>

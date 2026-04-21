@@ -32,7 +32,7 @@ interface PlayerData {
   lastActive: any;
 }
 
-interface BuildingData {
+export interface BuildingData {
   id: string;
   type: 'town_hall' | 'barracks' | 'granary' | 'gold_mine';
   slotIndex: number;
@@ -172,6 +172,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               berserk: 0,
               dragon: 0
             },
+            hero: { level: 1, exp: 0, equipment: { weapon: null, armor: null } },
+            battleRating: 0, // Will be updated on first load or recalculated
             createdAt: serverTimestamp(),
             lastActive: serverTimestamp(),
           };

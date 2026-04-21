@@ -1,6 +1,6 @@
 'use client';
 
-import { useGame } from '@/lib/GameContext';
+import { useGame, BuildingData } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Hammer, X, Pickaxe, Landmark, Sword, Warehouse, Gem, Coins } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -375,7 +375,7 @@ function BuildModalIcon({ type }: { type: string }) {
         />
       ) : (
         <div className="opacity-50">
-          {React.cloneElement(config.icon as React.ReactElement, { className: 'w-8 h-8' })}
+          {React.cloneElement(config.icon as React.ReactElement<{ className?: string }>, { className: 'w-8 h-8' })}
         </div>
       )}
     </>

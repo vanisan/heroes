@@ -25,7 +25,7 @@ function NavButton({ icon, label, active, onClick }: { icon: React.ReactElement,
         ${active ? 'bg-amber-600/10 text-amber-500' : 'text-slate-500'}
       `}
     >
-      {React.cloneElement(icon, { className: `w-5 h-5 mb-1 ${active ? 'animate-pulse' : ''}` })}
+      {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: `w-5 h-5 mb-1 ${active ? 'animate-pulse' : ''}` })}
       <span className="text-[9px] font-bold uppercase tracking-tighter truncate w-full">{label}</span>
       {active && <motion.div layoutId="nav-active" className="absolute bottom-0 w-8 h-0.5 bg-amber-500 rounded-full" />}
     </button>
