@@ -100,6 +100,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const unitLimit = getUnitLimit();
 
   useEffect(() => {
+    // Watchdog timer: if loading is still true after 12 seconds, force it to false
+    // so the user can at least see the AuthOverlay or a potential error message.
+    const timer = setTimeout(() => {
+      if (loading) {
+        console.warn('GameContext: Initial load timed out, forcing UI... Check connectivity or Firebase config.');
+        setLoading(false);
+      }
+    }, 12000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
       if (!u) {
@@ -181,9 +193,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           await setDoc(playerRef, newPlayer);
         }
       } catch (err) {
+        setLoading(false);
         handleFirestoreError(err, 'write', `players/${user.uid}`);
       }
     }, (error) => {
+      setLoading(false);
       handleFirestoreError(error, 'get', `players/${user.uid}`);
     });
 
@@ -192,6 +206,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setBuildings(bList);
       setLoading(false);
     }, (error) => {
+      setLoading(false);
       handleFirestoreError(error, 'list', `players/${user.uid}/buildings`);
     });
 
@@ -199,6 +214,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const iList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setItems(iList);
     }, (error) => {
+      setLoading(false); // Even item error shouldn't block the UI
       handleFirestoreError(error, 'list', `players/${user.uid}/items`);
     });
 

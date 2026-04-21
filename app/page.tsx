@@ -20,12 +20,28 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-slate-950">
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-10 h-10 border-2 border-amber-600 border-t-transparent rounded-full"
+          className="w-10 h-10 border-2 border-amber-600 border-t-transparent rounded-full mb-6"
         />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 5 }}
+          className="max-w-xs"
+        >
+          <p className="text-slate-500 text-xs uppercase tracking-widest font-bold mb-4">
+            Загрузка затянулась... Проверьте интернет или попробуйте обновить страницу.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-slate-900 border border-slate-800 rounded-xl text-amber-500 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-colors"
+          >
+            Обновить страницу
+          </button>
+        </motion.div>
       </div>
     );
   }
