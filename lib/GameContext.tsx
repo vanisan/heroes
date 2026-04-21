@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, updateDoc, serverTimestamp, collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
@@ -58,6 +58,7 @@ interface GameContextType {
   sellBuilding: (buildingId: string) => Promise<void>;
   goldLimit: number;
   unitLimit: number;
+  goldPerHour: number;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -69,7 +70,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
 
-  const calculateBR = (p: PlayerData) => {
+  const calculateBR = useCallback((p: PlayerData) => {
     const unitPower = 
       (p.garrison?.knight || 0) * 15 + 
       (p.garrison?.archer || 0) * 15 + 
@@ -78,27 +79,65 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       (p.garrison?.dragon || 0) * 230;
     const heroPower = (p.hero?.level || 1) * 100;
     return unitPower + heroPower;
-  };
+  }, []);
 
-  const getGoldLimit = () => {
+  const getGoldLimit = useCallback(() => {
     let limit = 10000;
     buildings.filter(b => b.type === 'granary').forEach(b => {
       limit += 5000 * Math.pow(2, b.level - 1);
     });
     return limit;
-  };
+  }, [buildings]);
 
-  const getUnitLimit = () => {
+  const getUnitLimit = useCallback(() => {
     let limit = 100;
     buildings.filter(b => b.type === 'barracks').forEach(b => {
       limit += 20 * Math.pow(2, b.level - 1);
     });
     return limit;
-  };
+  }, [buildings]);
+
+  const getGoldPerHour = useCallback(() => {
+    let total = 0;
+    buildings.filter(b => b.type === 'gold_mine').forEach(b => {
+      total += Math.floor(100 * Math.pow(2.2, b.level - 1));
+    });
+    return total;
+  }, [buildings]);
 
   const goldLimit = getGoldLimit();
   const unitLimit = getUnitLimit();
+  const goldPerHour = getGoldPerHour();
 
+  // Passive income effect (online)
+  useEffect(() => {
+    if (!user || !player || !buildings.length) return;
+
+    // Tick every minute to sync gold production to the cloud
+    const interval = setInterval(async () => {
+      const currentRate = getGoldPerHour();
+      if (currentRate <= 0) return;
+
+      try {
+        const playerRef = doc(db, 'players', user.uid);
+        const earned = Math.floor(currentRate / 60); // 1 minute worth
+        if (earned > 0) {
+          const newGold = Math.min(getGoldLimit(), (player.gold || 0) + earned);
+          if (newGold > player.gold) {
+            await updateDoc(playerRef, {
+              gold: newGold,
+              lastActive: serverTimestamp() // Keeping it fresh
+            });
+            console.log(`Passive tick: +${earned} gold`);
+          }
+        }
+      } catch (err) {
+        console.error("Passive income sync error", err);
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [user, player?.uid, player?.gold, buildings.length, goldLimit, goldPerHour, getGoldLimit, getGoldPerHour]); // Dependencies focus on changes that affect rate or storage
   useEffect(() => {
     // Watchdog timer: if loading is still true after 12 seconds, force it to false
     // so the user can at least see the AuthOverlay or a potential error message.
@@ -169,6 +208,29 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           if (needsUpdate) {
             await updateDoc(playerRef, updates);
           }
+
+          // OFFLINE EARNINGS CALCULATION
+          if (data.lastActive && goldPerHour > 0) {
+            const lastActiveDate = data.lastActive.toDate ? data.lastActive.toDate() : new Date(data.lastActive);
+            const now = new Date();
+            const diffMs = now.getTime() - lastActiveDate.getTime();
+            const diffHours = diffMs / (1000 * 60 * 60);
+            
+            if (diffHours > 0.01) { // More than 36 seconds
+              const earned = Math.floor(diffHours * goldPerHour);
+              if (earned > 0) {
+                const newGold = Math.min(getGoldLimit(), data.gold + earned);
+                if (newGold > data.gold) {
+                  await updateDoc(playerRef, {
+                    gold: newGold,
+                    lastActive: serverTimestamp() // Update to prevent double collection
+                  });
+                  console.log(`Earned ${earned} gold while offline!`);
+                }
+              }
+            }
+          }
+
           setPlayer(data);
         } else {
           const newPlayer: PlayerData = {
@@ -223,7 +285,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       unsubscribeBuildings();
       unsubscribeItems();
     };
-  }, [user]);
+  }, [user, calculateBR, getGoldLimit, goldPerHour]);
 
   const addGold = async (amount: number) => {
     if (!user || !player) return;
@@ -406,7 +468,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     <GameContext.Provider value={{ 
       user, player, buildings, items, loading, 
       addGold, expandBase, buildStructure, upgradeBuilding, sellBuilding, recruitUnit, updateGarrison, buyItem, startPvP, getLeaderboard,
-      goldLimit, unitLimit
+      goldLimit, unitLimit, goldPerHour
     }}>
       {children}
     </GameContext.Provider>

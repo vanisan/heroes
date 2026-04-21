@@ -5,7 +5,7 @@ import { Coins, Gem, User as UserIcon, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function HUD() {
-  const { player, goldLimit } = useGame();
+  const { player, goldLimit, goldPerHour } = useGame();
 
   if (!player) return null;
 
@@ -17,7 +17,7 @@ export default function HUD() {
           value={player.gold} 
           limit={goldLimit}
           color="amber"
-          label="Золото"
+          label={`${goldPerHour.toLocaleString()}/ч`}
         />
         <ResourceBox 
           icon="💎" 
