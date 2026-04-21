@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "Player": {
+      "title": "Player Profile",
+      "description": "Stores user progress, resources, and base expansion state.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "gold": { "type": "integer" },
+        "diamonds": { "type": "integer" },
+        "tapsTotal": { "type": "integer" },
+        "baseSlots": { "type": "integer", "description": "Number of available building slots" },
+        "battleRating": { "type": "integer", "description": "Total combat power" },
+        "hero": {
+          "type": "object",
+          "properties": {
+            "level": { "type": "integer" },
+            "exp": { "type": "integer" },
+            "equipment": {
+              "type": "object",
+              "properties": {
+                "weapon": { "type": "string" },
+                "armor": { "type": "string" }
+              }
+            }
+          }
+        },
+        "garrison": {
+          "type": "object",
+          "properties": {
+            "knight": { "type": "integer" },
+            "archer": { "type": "integer" },
+            "mage": { "type": "integer" },
+            "berserk": { "type": "integer" },
+            "dragon": { "type": "integer" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastActive": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "gold", "diamonds", "baseSlots", "battleRating"]
+    },
+    "Building": {
+      "title": "Base Building",
+      "description": "Represents a structure in the user's base.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "type": { "type": "string", "enum": ["town_hall", "barracks", "granary", "gold_mine"] },
+        "slotIndex": { "type": "integer" },
+        "level": { "type": "integer" },
+        "lastCollectedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "type", "slotIndex", "level"]
+    },
+    "Troop": {
+      "title": "Troop Unit",
+      "description": "Army units owned by a player.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "type": { "type": "string" },
+        "count": { "type": "integer" }
+      },
+      "required": ["ownerId", "type", "count"]
+    },
+    "Battle": {
+      "title": "Active Battle",
+      "description": "State of a live combat encounter.",
+      "type": "object",
+      "properties": {
+        "attackerId": { "type": "string" },
+        "defenderId": { "type": "string", "description": "Can be 'boss' for PVE" },
+        "status": { "type": "string", "enum": ["active", "concluded"] },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "type": "string" },
+              "hp": { "type": "integer" },
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "ownerId": { "type": "string" }
+            }
+          }
+        },
+        "winnerId": { "type": "string" }
+      },
+      "required": ["attackerId", "defenderId", "status"]
+    },
+    "Item": {
+      "title": "Equipment Item",
+      "description": "Lootable items for players.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "rarity": { "type": "string" },
+        "stats": { "type": "object" }
+      },
+      "required": ["ownerId", "name", "rarity"]
+    }
+  },
+  "firestore": {
+    "/players/{playerId}": {
+      "schema": "Player",
+      "description": "Main user records"
+    },
+    "/players/{playerId}/buildings/{buildingId}": {
+      "schema": "Building",
+      "description": "Buildings owned by the player"
+    },
+    "/players/{playerId}/troops/{troopId}": {
+      "schema": "Troop",
+      "description": "Army composition"
+    },
+    "/players/{playerId}/items/{itemId}": {
+      "schema": "Item",
+      "description": "Player inventory"
+    },
+    "/battles/{battleId}": {
+      "schema": "Battle",
+      "description": "Active combat sessions"
+    }
+  }
+}

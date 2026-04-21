@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function verified() { return request.auth.token.email_verified == true; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128; }
+    
+    // Admin check - amvan0202@gmail.com
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'amvan0202@gmail.com' && request.auth.token.email_verified == true
+      ); 
+    }
+
+    // Validation Helpers
+    function isValidPlayer(p) {
+      return p.uid == request.auth.uid &&
+             p.gold is int && p.gold >= 0 &&
+             p.diamonds is int && p.diamonds >= 0 &&
+             p.baseSlots is int && p.baseSlots >= 0 &&
+             p.displayName is string && p.displayName.size() <= 64 &&
+             p.battleRating is int &&
+             p.garrison is map &&
+             p.hero is map;
+    }
+
+    function isValidBuilding(b, ownerId) {
+      return b.ownerId == ownerId &&
+             b.type in ['town_hall', 'barracks', 'granary', 'gold_mine'] &&
+             b.slotIndex is int && b.slotIndex >= 0 &&
+             b.level is int && b.level >= 1;
+    }
+
+    function isValidTroop(t, ownerId) {
+      return t.ownerId == ownerId &&
+             t.type is string &&
+             t.count is int && t.count >= 0;
+    }
+
+    // Player Profile
+    match /players/{playerId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(playerId) && isValidPlayer(incoming()) && incoming().createdAt == request.time;
+      allow update: if isOwner(playerId) && isValidPlayer(incoming()) && (
+        // Prevent changing immutable fields and only allow resource/stat changes
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly(['gold', 'diamonds', 'tapsTotal', 'lastActive', 'baseSlots', 'displayName', 'garrison', 'battleRating', 'hero'])
+        )
+      );
+      allow delete: if isAdmin();
+
+      // Sub-collections
+      match /buildings/{buildingId} {
+        allow read: if isOwner(playerId);
+        allow create: if isOwner(playerId) && isValidBuilding(incoming(), playerId) &&
+                      get(/databases/$(database)/documents/players/$(playerId)).data.baseSlots > incoming().slotIndex;
+        allow update: if isOwner(playerId) && isValidBuilding(incoming(), playerId) &&
+                      incoming().slotIndex == existing().slotIndex &&
+                      incoming().type == existing().type &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['level', 'lastCollectedAt']);
+        allow delete: if isOwner(playerId);
+      }
+
+      match /troops/{troopId} {
+        allow read: if isOwner(playerId);
+        allow write: if isOwner(playerId) && isValidTroop(incoming(), playerId);
+      }
+
+      match /items/{itemId} {
+        allow read: if isOwner(playerId);
+        allow write: if isOwner(playerId) && incoming().ownerId == playerId;
+      }
+    }
+
+    // Battles
+    match /battles/{battleId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (incoming().attackerId == request.auth.uid) && incoming().status == 'active';
+      allow update: if isSignedIn() && (
+        (existing().attackerId == request.auth.uid || existing().defenderId == request.auth.uid) &&
+        existing().status == 'active' &&
+        (
+          incoming().diff(existing()).affectedKeys().hasAny(['units', 'status', 'winnerId'])
+        )
+      );
+    }
+  }
+}

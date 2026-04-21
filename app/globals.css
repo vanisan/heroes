@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+}
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-200 selection:bg-amber-500/30;
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: theme('colors.slate.700');
+  border-radius: 2px;
+}
+
+@keyframes hero-neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5), 0 0 10px rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.6);
+    border-color: rgba(59, 130, 246, 1);
+  }
+}
+
+.hero-neon {
+  animation: hero-neon-pulse 2s infinite ease-in-out;
+}
