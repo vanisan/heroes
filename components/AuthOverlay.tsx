@@ -15,11 +15,12 @@ export default function AuthOverlay() {
     } catch (error: any) {
       console.error('Login failed', error);
       if (error.code === 'auth/popup-blocked') {
-        setLoginError('Всплывающее окно заблокировано браузером. Пожалуйста, разрешите всплывающие окна для этого сайта.');
+        setLoginError('Всплывающее окно заблокировано. Пожалуйста, разрешите всплывающие окна или нажмите кнопку "Открыть в новой вкладке" в правом верхнем углу превью.');
       } else if (error.code === 'auth/unauthorized-domain') {
-        setLoginError('Домен не авторизован в Firebase Console. Добавьте ваш домен в список разрешенных.');
+        const currentDomain = window.location.hostname;
+        setLoginError(`Домен "${currentDomain}" не авторизован в Firebase. Добавьте его в Firebase Console -> Authentication -> Settings -> Authorized domains.`);
       } else {
-        setLoginError('Не удалось войти. Попробуйте еще раз.');
+        setLoginError('Ошибка входа. Убедитесь, что ваш домен добавлен в список разрешенных в Firebase Console.');
       }
     }
   };

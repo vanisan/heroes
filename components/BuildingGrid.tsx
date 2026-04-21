@@ -2,7 +2,7 @@
 
 import { useGame, BuildingData } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Hammer, X, Pickaxe, Landmark, Sword, Warehouse, Gem, Coins } from 'lucide-react';
+import { Plus, Hammer, X, Pickaxe, Landmark, Sword, Warehouse, Gem, Coins, Trash2 } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 
 import Image from 'next/image';
@@ -47,7 +47,7 @@ const BUILDING_TYPES = [
 ] as const;
 
 export default function BuildingGrid() {
-  const { player, buildings, buildStructure, expandBase, addGold, upgradeBuilding } = useGame();
+  const { player, buildings, buildStructure, expandBase, addGold, upgradeBuilding, sellBuilding } = useGame();
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [inspectBuilding, setInspectBuilding] = useState<BuildingData | null>(null);
   const [errorVisible, setErrorVisible] = useState<string | null>(null);
@@ -143,6 +143,15 @@ export default function BuildingGrid() {
             onUpgrade={async () => {
               try {
                 await upgradeBuilding(inspectBuilding.id);
+                setInspectBuilding(null);
+              } catch (err: any) {
+                setErrorVisible(err.message);
+                setTimeout(() => setErrorVisible(null), 3000);
+              }
+            }}
+            onSell={async () => {
+              try {
+                await sellBuilding(inspectBuilding.id);
                 setInspectBuilding(null);
               } catch (err: any) {
                 setErrorVisible(err.message);
@@ -382,12 +391,13 @@ function BuildModalIcon({ type }: { type: string }) {
   );
 }
 
-function InspectModal({ building, onClose, onUpgrade, onTap }: { building: BuildingData, onClose: () => void, onUpgrade: () => void, onTap: () => void }) {
+function InspectModal({ building, onClose, onUpgrade, onSell, onTap }: { building: BuildingData, onClose: () => void, onUpgrade: () => void, onSell: () => void, onTap: () => void }) {
   const { player } = useGame();
   const config = BUILDING_TYPES.find(b => b.type === building.type);
   if (!config) return null;
 
   const upgradeCost = building.level * 500;
+  const sellRefund = Math.floor((building.level * 250) / 2);
   const canAfford = (player?.gold || 0) >= upgradeCost;
   const goldPerTap = 1 + (building.level - 1) * 2;
 
@@ -409,9 +419,21 @@ function InspectModal({ building, onClose, onUpgrade, onTap }: { building: Build
               <p className="text-xs font-mono text-amber-500">Уровень {building.level}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 bg-slate-800 rounded-lg border border-slate-700">
-            <X className="w-4 h-4 text-slate-400" />
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => {
+                if(confirm('Вы уверены, что хотите снести это здание?')) {
+                  onSell();
+                }
+              }} 
+              className="p-2 bg-rose-950/30 rounded-lg border border-rose-500/30 text-rose-500 hover:bg-rose-900/50 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <button onClick={onClose} className="p-2 bg-slate-800 rounded-lg border border-slate-700">
+              <X className="w-4 h-4 text-slate-400" />
+            </button>
+          </div>
         </div>
 
         <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700 mb-6">

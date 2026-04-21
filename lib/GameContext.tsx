@@ -55,6 +55,7 @@ interface GameContextType {
   buyItem: (item: { name: string, rarity: string, stats: any, cost: number, icon: string }) => Promise<void>;
   startPvP: (opponentId: string) => Promise<void>;
   getLeaderboard: () => Promise<any[]>;
+  sellBuilding: (buildingId: string) => Promise<void>;
   goldLimit: number;
   unitLimit: number;
 }
@@ -363,10 +364,32 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const sellBuilding = async (buildingId: string) => {
+    if (!user || !player) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+
+    // Refund 50% of the cost based on level
+    const refund = Math.floor((building.level * 250) / 2);
+
+    try {
+      const playerRef = doc(db, 'players', user.uid);
+      const buildingRef = doc(db, 'players', user.uid, 'buildings', buildingId);
+
+      await deleteDoc(buildingRef);
+      await updateDoc(playerRef, {
+        gold: Math.min(goldLimit, player.gold + refund),
+        lastActive: serverTimestamp()
+      });
+    } catch (err) {
+      handleFirestoreError(err, 'delete', `players/${user.uid}/buildings/${buildingId}`);
+    }
+  };
+
   return (
     <GameContext.Provider value={{ 
       user, player, buildings, items, loading, 
-      addGold, expandBase, buildStructure, upgradeBuilding, recruitUnit, updateGarrison, buyItem, startPvP, getLeaderboard,
+      addGold, expandBase, buildStructure, upgradeBuilding, sellBuilding, recruitUnit, updateGarrison, buyItem, startPvP, getLeaderboard,
       goldLimit, unitLimit
     }}>
       {children}
