@@ -4,13 +4,12 @@ import { useGame } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Sword, User, Package, Star, Heart, Zap, ChevronRight, X, Coins, ArrowUp } from 'lucide-react';
 import React, { useState } from 'react';
-import Image from 'next/image';
 import { formatNumber } from '@/lib/utils';
 
 export default function HeroView() {
   const { player, items, equipItem, unequipItem, sellItem, upgradeItem } = useGame();
-  const [imgError, setImgError] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [imgError, setImgError] = useState(false);
   
   if (!player || !player.hero) return null;
 
@@ -72,13 +71,11 @@ export default function HeroView() {
         <div className="h-40 bg-gradient-to-b from-amber-600/20 to-transparent flex flex-col items-center justify-center pt-8">
            <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-900 shadow-xl flex items-center justify-center text-5xl relative overflow-hidden">
               {!imgError ? (
-                <Image 
+                <img 
                   src="/icons/hero/hero.webp" 
                   alt="Hero" 
-                  fill 
-                  className="object-cover" 
+                  className="w-full h-full object-cover" 
                   onError={() => setImgError(true)}
-                  referrerPolicy="no-referrer"
                 />
               ) : (
                 '🛡️'

@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useGame } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sword, Shield, Heart, Trophy, ChevronRight, ChevronLeft, Skull, Wand2, Zap, Flame, User } from 'lucide-react';
@@ -576,18 +575,15 @@ function UnitSelectionRow({ type, player, selectedUnits, onToggle, onSetMax }: {
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center relative overflow-hidden`}>
-          {data.webp && !imgError ? (
-            <Image 
+          {!imgError && data.webp ? (
+            <img 
               src={data.webp} 
               alt={data.name} 
-              fill 
-              sizes="40px"
-              className="object-contain p-1.5"
+              className="w-full h-full object-contain p-1.5"
               onError={() => setImgError(true)}
-              referrerPolicy="no-referrer"
             />
           ) : (
-             data.icon
+            data.icon
           )}
         </div>
         <div>
@@ -622,14 +618,11 @@ function BattleUnitIcon({ u }: { u: Unit }) {
     return (
        <div className="w-full h-full flex items-center justify-center bg-amber-500/20 rounded-full overflow-hidden relative">
          {!imgError ? (
-           <Image 
+           <img 
              src="/icons/hero/hero.webp" 
              alt="Hero" 
-             fill 
-             sizes="32px"
-             className="object-cover"
+             className="w-full h-full object-cover" 
              onError={() => setImgError(true)}
-             referrerPolicy="no-referrer"
            />
          ) : (
            <User className="w-5 h-5 text-amber-500" />
@@ -641,26 +634,24 @@ function BattleUnitIcon({ u }: { u: Unit }) {
   if ((u.side === 'enemy' && type !== 'boss') || !data || imgError) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        {u.type === 'knight' ? <Shield className="w-4 h-4" /> : 
-         u.type === 'archer' ? <Sword className="w-4 h-4 rotate-45" /> : 
-         u.type === 'mage' ? <Wand2 className="w-4 h-4" /> : 
-         u.type === 'berserk' ? <Zap className="w-4 h-4" /> :
-         u.type === 'dragon' ? <Flame className="w-4 h-4" /> :
-         u.type === 'titan' ? <Wand2 className="w-4 h-4 text-emerald-500" /> :
-         u.type === 'boss' ? <Skull className="w-6 h-6 text-rose-500 animate-pulse" /> :
+        {type === 'knight' ? <Shield className="w-4 h-4" /> : 
+         type === 'archer' ? <Sword className="w-4 h-4" /> : 
+         type === 'mage' ? <Zap className="w-4 h-4" /> : 
+         type === 'berserk' ? <Sword className="w-5 h-5 text-rose-500" /> : 
+         type === 'dragon' ? <Flame className="w-5 h-5 text-amber-500" /> : 
+         type === 'titan' ? <Shield className="w-6 h-6 text-slate-300" /> : 
+         type === 'boss' ? <Skull className="w-6 h-6 text-rose-500 animate-pulse" /> : 
          <Skull className="w-4 h-4" />}
       </div>
     );
   }
 
   return (
-    <Image 
+    <img 
       src={data.webp} 
       alt={data.name} 
-      fill 
-      className="object-contain p-0.5"
+      className="w-full h-full object-contain p-0.5"
       onError={() => setImgError(true)}
-      referrerPolicy="no-referrer"
     />
   );
 }

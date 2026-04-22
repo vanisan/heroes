@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Hammer, X, Pickaxe, Landmark, Sword, Warehouse, Gem, Coins, Trash2 } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatNumber } from '@/lib/utils';
-import Image from 'next/image';
 
 const BUILDING_TYPES = [
   { 
@@ -285,18 +284,15 @@ function BuildingIcon({ type, level }: { type: string, level: number }) {
   return (
     <div className="flex flex-col items-center gap-0.5 text-center px-1">
       <div className="relative w-12 h-12 mb-1 flex items-center justify-center">
-        {config.webp && !imgError ? (
-          <Image 
+        {!imgError && config.webp ? (
+          <img 
             src={config.webp} 
             alt={names[type]} 
-            fill 
-            sizes="48px"
-            className="object-contain"
+            className="w-full h-full object-contain drop-shadow-md"
             onError={() => setImgError(true)}
-            referrerPolicy="no-referrer"
           />
         ) : (
-          <span className="text-3xl">{emojis[type] || '🏛️'}</span>
+          <span className="text-4xl drop-shadow-md">{emojis[type] || '🏛️'}</span>
         )}
       </div>
       <p className="text-[9px] font-bold uppercase tracking-tight text-slate-200 truncate w-full">{names[type] || config.name}</p>
@@ -376,15 +372,12 @@ function BuildModalIcon({ type }: { type: string }) {
 
   return (
     <>
-      {config.webp && !imgError ? (
-        <Image 
+      {!imgError && config.webp ? (
+        <img 
           src={config.webp} 
           alt={config.name} 
-          fill 
-          sizes="64px"
-          className="object-contain p-2"
+          className="w-full h-full object-contain p-2"
           onError={() => setImgError(true)}
-          referrerPolicy="no-referrer"
         />
       ) : (
         <div className="opacity-50">

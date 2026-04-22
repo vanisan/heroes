@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useGame } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Coins, ShoppingBag, Sparkles, Shield, Sword, Gem } from 'lucide-react';
-import Image from 'next/image';
 import { formatNumber } from '@/lib/utils';
 
 const SHOP_ITEMS = [
@@ -122,10 +121,7 @@ export default function ShopView() {
           
           return (
             <div key={item.id} className={`p-4 rounded-xl border flex gap-4 transition-all ${rarityColor}`}>
-              <div className="w-16 h-16 shrink-0 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-center text-3xl relative overflow-hidden group">
-                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                 {item.icon}
-              </div>
+              <ShopItemIcon item={item} />
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between mb-1">
@@ -172,6 +168,25 @@ export default function ShopView() {
          <p className="text-xs text-slate-500 uppercase font-bold tracking-tight">Новые товары прибудут завтра</p>
          <p className="text-[9px] text-slate-600 mt-1 uppercase font-medium">Следите за обновлениями лавки</p>
       </div>
+    </div>
+  );
+}
+
+function ShopItemIcon({ item }: { item: any }) {
+  const [imgError, setImgError] = useState(false);
+  return (
+    <div className="w-16 h-16 shrink-0 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-center text-3xl relative overflow-hidden group">
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      {!imgError && item.webp ? (
+        <img 
+          src={item.webp} 
+          alt={item.name} 
+          className="w-full h-full object-contain p-2"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        item.icon
+      )}
     </div>
   );
 }

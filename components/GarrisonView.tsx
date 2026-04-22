@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import { useGame } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sword, Shield, Wand2, Plus, Coins, Flame, Zap, Heart } from 'lucide-react';
@@ -144,15 +143,12 @@ function UnitRow({ unit, player, recruitUnit, recruitAllUnits, setErrorVisible }
       <div className="absolute inset-0 bg-white/5 pointer-events-none opacity-0 hover:opacity-100 transition-opacity"></div>
       
       <div className={`w-12 h-12 rounded-xl border border-${unit.color}-500/30 bg-${unit.color}-500/10 flex items-center justify-center text-${unit.color}-400 overflow-hidden relative`}>
-        {unit.webp && !imgError ? (
-          <Image 
+        {!imgError && unit.webp ? (
+          <img 
             src={unit.webp} 
             alt={unit.name} 
-            fill 
-            sizes="48px"
-            className="object-contain p-1"
+            className="w-full h-full object-contain p-1"
             onError={() => setImgError(true)}
-            referrerPolicy="no-referrer"
           />
         ) : (
           unit.icon

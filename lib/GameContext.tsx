@@ -119,11 +119,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const goldPerHour = getGoldPerHour();
 
   // Reference for background income tracking
-  const stateRef = useRef({ rate: 0, lastTick: Date.now() });
+  const stateRef = useRef({ rate: 0, limit: 0, lastTick: Date.now() });
   
   useEffect(() => {
     stateRef.current.rate = goldPerHour;
-  }, [goldPerHour]);
+    stateRef.current.limit = goldLimit;
+  }, [goldPerHour, goldLimit]);
 
   // Passive income effect (online & background robust)
   useEffect(() => {
@@ -234,16 +235,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           }
 
           // OFFLINE EARNINGS CALCULATION
-          if (data.lastActive && goldPerHour > 0) {
+          if (data.lastActive && stateRef.current.rate > 0) {
             const lastActiveDate = data.lastActive.toDate ? data.lastActive.toDate() : new Date(data.lastActive);
             const now = new Date();
             const diffMs = now.getTime() - lastActiveDate.getTime();
             const diffHours = diffMs / (1000 * 60 * 60);
             
             if (diffHours > 0.01) { // More than 36 seconds
-              const earned = Math.floor(diffHours * goldPerHour);
+              const earned = Math.floor(diffHours * stateRef.current.rate);
               if (earned > 0) {
-                const newGold = Math.min(getGoldLimit(), data.gold + earned);
+                const newGold = Math.min(stateRef.current.limit, data.gold + earned);
                 if (newGold > data.gold) {
                   await updateDoc(playerRef, {
                     gold: newGold,
@@ -264,16 +265,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             diamonds: 50,
             tapsTotal: 0,
             baseSlots: 6,
-            garrison: {
-              knight: 10,
-              archer: 5,
-              mage: 0,
-              berserk: 0,
-              dragon: 0,
-              titan: 0
-            },
+            garrison: { knight: 10, archer: 5, mage: 0, berserk: 0, dragon: 0, titan: 0 },
             hero: { level: 1, exp: 0, equipment: { weapon: null, armor: null } },
-            battleRating: 0, // Will be updated on first load or recalculated
+            battleRating: 150 + 75 + 100, // Hardcoded initial calc
             createdAt: serverTimestamp(),
             lastActive: serverTimestamp(),
           };
@@ -310,7 +304,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       unsubscribeBuildings();
       unsubscribeItems();
     };
-  }, [user, calculateBR, getGoldLimit, goldPerHour]);
+  }, [user?.uid, calculateBR]);
 
   const addGold = async (amount: number) => {
     if (!user || !player) return;
