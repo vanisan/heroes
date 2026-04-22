@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
+import { auth, googleProvider, signInWithPopup, signInWithRedirect } from '@/lib/firebase';
 import { motion } from 'motion/react';
 import { LogIn, ShieldCheck } from 'lucide-react';
 
@@ -17,7 +17,13 @@ export default function AuthOverlay() {
       const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
       
       if (error.code === 'auth/popup-blocked') {
-        setLoginError(`Всплывающее окно заблокировано. Домен: ${currentDomain}. Пожалуйста, разрешите всплывающие окна или нажмите на иконку "Open in new tab".`);
+        // Fallback to redirect authentication if popups are heavily blocked by the browser
+        console.warn("Popup blocked by browser, falling back to redirect auth");
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectErr: any) {
+             setLoginError(`Всплывающее окно заблокировано. Домен: ${currentDomain}. Пожалуйста, разрешите всплывающие окна в настройках браузера.`);
+        }
       } else if (error.code === 'auth/unauthorized-domain') {
         setLoginError(`КРИТИЧЕСКАЯ ОШИБКА ДОМЕНА: "${currentDomain}" не в списке разрешенных Firebase. Добавьте его в консоль.`);
       } else {
