@@ -145,7 +145,7 @@ function UnitRow({ unit, player, recruitUnit, recruitAllUnits, setErrorVisible }
       <div className={`w-12 h-12 rounded-xl border border-${unit.color}-500/30 bg-${unit.color}-500/10 flex items-center justify-center text-${unit.color}-400 overflow-hidden relative`}>
         {!imgError && unit.webp ? (
           <img 
-            src={unit.webp} 
+            src={`${unit.webp}?v=2`} 
             alt={unit.name} 
             className="w-full h-full object-contain p-1"
             onError={() => setImgError(true)}

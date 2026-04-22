@@ -577,7 +577,7 @@ function UnitSelectionRow({ type, player, selectedUnits, onToggle, onSetMax }: {
         <div className={`w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center relative overflow-hidden`}>
           {!imgError && data.webp ? (
             <img 
-              src={data.webp} 
+              src={`${data.webp}?v=2`} 
               alt={data.name} 
               className="w-full h-full object-contain p-1.5"
               onError={() => setImgError(true)}
@@ -619,7 +619,7 @@ function BattleUnitIcon({ u }: { u: Unit }) {
        <div className="w-full h-full flex items-center justify-center bg-amber-500/20 rounded-full overflow-hidden relative">
          {!imgError ? (
            <img 
-             src="/icons/hero/hero.webp" 
+             src="/icons/hero/hero.webp?v=2" 
              alt="Hero" 
              className="w-full h-full object-cover" 
              onError={() => setImgError(true)}
@@ -648,7 +648,7 @@ function BattleUnitIcon({ u }: { u: Unit }) {
 
   return (
     <img 
-      src={data.webp} 
+      src={`${data.webp}?v=2`} 
       alt={data.name} 
       className="w-full h-full object-contain p-0.5"
       onError={() => setImgError(true)}

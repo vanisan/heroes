@@ -286,7 +286,7 @@ function BuildingIcon({ type, level }: { type: string, level: number }) {
       <div className="relative w-12 h-12 mb-1 flex items-center justify-center">
         {!imgError && config.webp ? (
           <img 
-            src={config.webp} 
+            src={`${config.webp}?v=2`} 
             alt={names[type]} 
             className="w-full h-full object-contain drop-shadow-md"
             onError={() => setImgError(true)}
@@ -374,7 +374,7 @@ function BuildModalIcon({ type }: { type: string }) {
     <>
       {!imgError && config.webp ? (
         <img 
-          src={config.webp} 
+          src={`${config.webp}?v=2`} 
           alt={config.name} 
           className="w-full h-full object-contain p-2"
           onError={() => setImgError(true)}

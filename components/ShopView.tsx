@@ -179,7 +179,7 @@ function ShopItemIcon({ item }: { item: any }) {
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       {!imgError && item.webp ? (
         <img 
-          src={item.webp} 
+          src={`${item.webp}?v=2`} 
           alt={item.name} 
           className="w-full h-full object-contain p-2"
           onError={() => setImgError(true)}
