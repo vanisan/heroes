@@ -289,7 +289,10 @@ function BuildingIcon({ type, level }: { type: string, level: number }) {
             src={`${config.webp}?v=2`} 
             alt={names[type]} 
             className="w-full h-full object-contain drop-shadow-md"
-            onError={() => setImgError(true)}
+            onError={(e) => {
+              console.error('Failed to load image [BuildingIcon]:', (e.target as HTMLImageElement).src);
+              setImgError(true);
+            }}
           />
         ) : (
           <span className="text-4xl drop-shadow-md">{emojis[type] || '🏛️'}</span>
