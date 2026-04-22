@@ -22,7 +22,7 @@ export default function AuthOverlay() {
         try {
           await signInWithRedirect(auth, googleProvider);
         } catch (redirectErr: any) {
-             setLoginError(`Всплывающее окно заблокировано. Домен: ${currentDomain}. Пожалуйста, разрешите всплывающие окна в настройках браузера.`);
+             setLoginError(`Всплывающее окно заблокировано. Ваш домен: ${currentDomain}. Если вы открыли игру на Vercel, убедитесь, что вы обновили код, т.к. старый код не поддерживает редирект! Ошибка редиректа: ${redirectErr.message}`);
         }
       } else if (error.code === 'auth/unauthorized-domain') {
         setLoginError(`КРИТИЧЕСКАЯ ОШИБКА ДОМЕНА: "${currentDomain}" не в списке разрешенных Firebase. Добавьте его в консоль.`);
