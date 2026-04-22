@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useGame } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sword, Shield, Wand2, Plus, Coins, Flame, Zap, Heart } from 'lucide-react';
+import { formatNumber } from '@/lib/utils';
 
 const UNIT_DESCRIPTIONS = [
   { 
@@ -57,10 +58,20 @@ const UNIT_DESCRIPTIONS = [
     webp: '/icons/dragon.webp',
     color: 'rose'
   },
+  {
+    type: 'titan' as const,
+    name: 'Титан',
+    description: 'Молотом крушит целые ряды врагов.',
+    cost: 5000,
+    hp: 800, atk: 250, def: 100,
+    icon: <Wand2 className="w-5 h-5" />, // placeholder icon, visual relies on webp
+    webp: '/icons/titan.webp',
+    color: 'emerald'
+  }
 ];
 
 export default function GarrisonView() {
-  const { player, recruitUnit, unitLimit } = useGame();
+  const { player, recruitUnit, recruitAllUnits, unitLimit } = useGame();
   const [errorVisible, setErrorVisible] = React.useState<string | null>(null);
 
   if (!player) return null;
@@ -88,7 +99,7 @@ export default function GarrisonView() {
       <div className="space-y-3">
         {UNIT_DESCRIPTIONS.map((unit) => {
           return (
-            <UnitRow key={unit.type} unit={unit} player={player} recruitUnit={recruitUnit} setErrorVisible={setErrorVisible} />
+            <UnitRow key={unit.type} unit={unit} player={player} recruitUnit={recruitUnit} recruitAllUnits={recruitAllUnits} setErrorVisible={setErrorVisible} />
           );
         })}
       </div>
@@ -99,22 +110,23 @@ export default function GarrisonView() {
           <div className="text-center">
             <p className="text-[10px] text-slate-500 uppercase leading-none mb-1">Всего</p>
             <p className="font-mono text-lg font-bold text-white">
-              {Object.values(player.garrison).reduce((a, b) => a + b, 0)}
+              {formatNumber(Object.values(player.garrison).reduce((a, b: any) => a + b, 0))}
             </p>
           </div>
           <div className="text-center border-x border-slate-800">
             <p className="text-[10px] text-slate-500 uppercase leading-none mb-1">Мощь</p>
             <p className="font-mono text-lg font-bold text-amber-400">
-              {(player.garrison?.knight || 0) * 15 + 
+              {formatNumber((player.garrison?.knight || 0) * 15 + 
                (player.garrison?.archer || 0) * 15 + 
                (player.garrison?.mage || 0) * 45 +
                (player.garrison?.berserk || 0) * 60 +
-               (player.garrison?.dragon || 0) * 230}
+               (player.garrison?.dragon || 0) * 230 +
+               (player.garrison?.titan || 0) * 850)}
             </p>
           </div>
           <div className="text-center">
             <p className="text-[10px] text-slate-500 uppercase leading-none mb-1">Лимит</p>
-            <p className="font-mono text-lg font-bold text-slate-600">{unitLimit}</p>
+            <p className="font-mono text-lg font-bold text-slate-600">{formatNumber(unitLimit)}</p>
           </div>
         </div>
       </div>
@@ -122,7 +134,7 @@ export default function GarrisonView() {
   );
 }
 
-function UnitRow({ unit, player, recruitUnit, setErrorVisible }: { unit: any, player: any, recruitUnit: any, setErrorVisible: any }) {
+function UnitRow({ unit, player, recruitUnit, recruitAllUnits, setErrorVisible }: { unit: any, player: any, recruitUnit: any, recruitAllUnits: any, setErrorVisible: any }) {
   const [imgError, setImgError] = React.useState(false);
   const currentCount = player.garrison?.[unit.type] || 0;
   const canAfford = player.gold >= unit.cost;
@@ -137,6 +149,7 @@ function UnitRow({ unit, player, recruitUnit, setErrorVisible }: { unit: any, pl
             src={unit.webp} 
             alt={unit.name} 
             fill 
+            sizes="48px"
             className="object-contain p-1"
             onError={() => setImgError(true)}
             referrerPolicy="no-referrer"
@@ -149,7 +162,7 @@ function UnitRow({ unit, player, recruitUnit, setErrorVisible }: { unit: any, pl
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-sm text-white uppercase tracking-tight">{unit.name}</h3>
-          <span className="font-mono text-xs font-bold text-amber-500">x{currentCount}</span>
+          <span className="font-mono text-xs font-bold text-amber-500">x{formatNumber(currentCount)}</span>
         </div>
         <p className="text-[10px] text-slate-500 truncate">{unit.description}</p>
         <div className="flex items-center gap-3 mt-2">
@@ -167,12 +180,25 @@ function UnitRow({ unit, player, recruitUnit, setErrorVisible }: { unit: any, pl
           </div>
           <div className="ml-2 flex items-center gap-1">
             <Coins className="w-3 h-3 text-amber-600" />
-            <span className="text-[10px] font-mono font-bold text-slate-400">{unit.cost}</span>
+            <span className="text-[10px] font-mono font-bold text-slate-400">{formatNumber(unit.cost)}</span>
           </div>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
+        <button
+          onClick={async () => {
+            try {
+              await recruitAllUnits(unit.type, unit.cost);
+            } catch (err: any) {
+              setErrorVisible(err.message);
+              setTimeout(() => setErrorVisible(null), 3000);
+            }
+          }}
+          className="h-10 px-3 rounded border border-amber-900/50 bg-amber-950/30 text-amber-500 font-bold text-[10px] transition-all hover:border-amber-500/50 active:scale-95 uppercase tracking-widest"
+        >
+          Max
+        </button>
         <button
           disabled={!canAfford}
           onClick={async () => {

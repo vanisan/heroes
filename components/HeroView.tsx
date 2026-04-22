@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Sword, User, Package, Star, Heart, Zap, ChevronRight } from 'lucide-react';
 import React from 'react';
 import Image from 'next/image';
+import { formatNumber } from '@/lib/utils';
 
 export default function HeroView() {
   const { player, items } = useGame();
@@ -48,9 +49,9 @@ export default function HeroView() {
            <p className="text-[10px] text-amber-500 font-bold uppercase tracking-[0.3em] mb-4">Легендарный Защитник</p>
            
            <div className="flex justify-center gap-6 border-y border-slate-800 py-4 my-2">
-              <Stat icon={<Heart className="w-3 h-3 text-rose-500" />} label="HP" value={100 + (player.hero.level * 20)} />
-              <Stat icon={<Sword className="w-3 h-3 text-blue-400" />} label="ATK" value={100 + (player.hero.level * 10)} />
-              <Stat icon={<Shield className="w-3 h-3 text-amber-500" />} label="DEF" value={100 + (player.hero.level * 5)} />
+              <Stat icon={<Heart className="w-3 h-3 text-rose-500" />} label="HP" value={formatNumber(100 + (player.hero.level * 20))} />
+              <Stat icon={<Sword className="w-3 h-3 text-blue-400" />} label="ATK" value={formatNumber(100 + (player.hero.level * 10))} />
+              <Stat icon={<Shield className="w-3 h-3 text-amber-500" />} label="DEF" value={formatNumber(100 + (player.hero.level * 5))} />
            </div>
         </div>
       </div>

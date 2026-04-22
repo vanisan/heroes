@@ -5,6 +5,7 @@ import { useGame } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Coins, ShoppingBag, Sparkles, Shield, Sword, Gem } from 'lucide-react';
 import Image from 'next/image';
+import { formatNumber } from '@/lib/utils';
 
 const SHOP_ITEMS = [
   {
@@ -109,7 +110,7 @@ export default function ShopView() {
         </div>
         <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full shadow-inner">
            <Coins className="w-3.5 h-3.5 text-amber-500" />
-           <span className="text-xs font-mono font-bold text-amber-500">{player.gold.toLocaleString()}</span>
+           <span className="text-xs font-mono font-bold text-amber-500">{formatNumber(player.gold)}</span>
         </div>
       </div>
 
@@ -133,7 +134,7 @@ export default function ShopView() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Coins className="w-3 h-3 text-amber-600" />
-                    <span className="text-[11px] font-mono font-bold text-amber-500">{item.cost.toLocaleString()}</span>
+                    <span className="text-[11px] font-mono font-bold text-amber-500">{formatNumber(item.cost)}</span>
                   </div>
                 </div>
 

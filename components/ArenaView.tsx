@@ -3,6 +3,7 @@
 import { useGame } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sword, Trophy, Shield, User, ChevronRight, Skull } from 'lucide-react';
+import { formatNumber } from '@/lib/utils';
 import React, { useEffect, useState } from 'react';
 
 export default function ArenaView({ onStartBattle }: { onStartBattle: (scenario: any) => void }) {
@@ -134,9 +135,10 @@ export default function ArenaView({ onStartBattle }: { onStartBattle: (scenario:
         
         <div className="grid grid-cols-1 gap-4">
            {[
-             { name: 'Гигантский Паук', diff: 1, reward: '5,000', icon: '🕷️', color: 'rose' },
-             { name: 'Древний Голем', diff: 3, reward: '15,000', icon: '🗿', color: 'rose' },
-             { name: 'Повелитель Бездны', diff: 10, reward: '50,000', icon: '👿', color: 'rose' },
+             { name: 'Гигантский Паук', diff: 1, reward: 5000, drop: '0.25%', icon: '🕷️', color: 'rose' },
+             { name: 'Древний Голем', diff: 3, reward: 15000, drop: '33%', icon: '🗿', color: 'rose' },
+             { name: 'Повелитель Бездны', diff: 10, reward: 50000, drop: '50%', icon: '👿', color: 'rose' },
+             { name: 'Император Драконов', diff: 25, reward: 200000, drop: '80%', icon: '👑', color: 'rose' },
            ].map(boss => (
              <button 
                key={boss.name}
@@ -146,9 +148,10 @@ export default function ArenaView({ onStartBattle }: { onStartBattle: (scenario:
                 <div className="text-4xl">{boss.icon}</div>
                 <div className="flex-1">
                   <h3 className="font-bold text-white uppercase text-sm mb-1">{boss.name}</h3>
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold text-rose-500 uppercase">Сложность: {boss.diff}</span>
-                    <span className="text-[10px] font-bold text-amber-500 uppercase">Награда: {boss.reward}</span>
+                    <span className="text-[10px] font-bold text-amber-500 uppercase">Награда: {formatNumber(boss.reward)} зл.</span>
+                    <span className="text-[10px] font-bold text-cyan-400 uppercase">Шанс Алмаза: {boss.drop}</span>
                   </div>
                 </div>
                 <Sword className="w-5 h-5 text-slate-700" />

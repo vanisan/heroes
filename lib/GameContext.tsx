@@ -1,9 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, updateDoc, serverTimestamp, collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, serverTimestamp, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, increment, getDocFromServer } from 'firebase/firestore';
 
 interface PlayerData {
   uid: string;
@@ -27,6 +27,7 @@ interface PlayerData {
     mage: number;
     berserk: number;
     dragon: number;
+    titan?: number;
   };
   createdAt: any;
   lastActive: any;
@@ -47,10 +48,12 @@ interface GameContextType {
   items: any[];
   loading: boolean;
   addGold: (amount: number) => Promise<void>;
+  addDiamonds: (amount: number) => Promise<void>;
   expandBase: () => Promise<void>;
   buildStructure: (type: BuildingData['type'], slot: number, cost: number) => Promise<void>;
   upgradeBuilding: (buildingId: string) => Promise<void>;
   recruitUnit: (type: keyof PlayerData['garrison'], count: number, cost: number) => Promise<void>;
+  recruitAllUnits: (type: keyof PlayerData['garrison'], costPerUnit: number) => Promise<void>;
   updateGarrison: (garrison: PlayerData['garrison']) => Promise<void>;
   buyItem: (item: { name: string, rarity: string, stats: any, cost: number, icon: string }) => Promise<void>;
   startPvP: (opponentId: string) => Promise<void>;
@@ -76,7 +79,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       (p.garrison?.archer || 0) * 15 + 
       (p.garrison?.mage || 0) * 45 +
       (p.garrison?.berserk || 0) * 60 +
-      (p.garrison?.dragon || 0) * 230;
+      (p.garrison?.dragon || 0) * 230 +
+      (p.garrison?.titan || 0) * 850;
     const heroPower = (p.hero?.level || 1) * 100;
     return unitPower + heroPower;
   }, []);
@@ -84,7 +88,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const getGoldLimit = useCallback(() => {
     let limit = 10000;
     buildings.filter(b => b.type === 'granary').forEach(b => {
-      limit += 5000 * Math.pow(2, b.level - 1);
+      limit += (5000 * b.level) + 5000;
     });
     return limit;
   }, [buildings]);
@@ -100,7 +104,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const getGoldPerHour = useCallback(() => {
     let total = 0;
     buildings.filter(b => b.type === 'gold_mine').forEach(b => {
-      total += Math.floor(100 * Math.pow(2.2, b.level - 1));
+      // Made gold mines significantly more effective and noticeable 
+      total += Math.floor(1000 * Math.pow(1.8, b.level - 1));
     });
     return total;
   }, [buildings]);
@@ -109,35 +114,49 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const unitLimit = getUnitLimit();
   const goldPerHour = getGoldPerHour();
 
-  // Passive income effect (online)
+  // Reference for background income tracking
+  const stateRef = useRef({ rate: 0, lastTick: Date.now() });
+  
   useEffect(() => {
-    if (!user || !player || !buildings.length) return;
+    stateRef.current.rate = goldPerHour;
+  }, [goldPerHour]);
 
-    // Tick every minute to sync gold production to the cloud
+  // Passive income effect (online & background robust)
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    stateRef.current.lastTick = Date.now();
+
     const interval = setInterval(async () => {
-      const currentRate = getGoldPerHour();
-      if (currentRate <= 0) return;
-
       try {
-        const playerRef = doc(db, 'players', user.uid);
-        const earned = Math.floor(currentRate / 60); // 1 minute worth
+        const now = Date.now();
+        const deltaSeconds = (now - stateRef.current.lastTick) / 1000;
+        stateRef.current.lastTick = now;
+
+        const currentRate = stateRef.current.rate;
+        if (currentRate <= 0 || deltaSeconds <= 0) return;
+        
+        // Calculate exact fraction of gold generated since last tick
+        // Even if browser throttles the tab to 1 tick per minute, deltaSeconds will be 60 and it will give correct amount!
+        const earned = Math.max(1, Math.floor(currentRate * (deltaSeconds / 3600))); 
+        
         if (earned > 0) {
-          const newGold = Math.min(getGoldLimit(), (player.gold || 0) + earned);
-          if (newGold > player.gold) {
-            await updateDoc(playerRef, {
-              gold: newGold,
-              lastActive: serverTimestamp() // Keeping it fresh
-            });
-            console.log(`Passive tick: +${earned} gold`);
-          }
+          await updateDoc(doc(db, 'players', user.uid), {
+             gold: increment(earned),
+             lastActive: serverTimestamp() // updating lastActive constantly so offline logic syncs nicely
+          });
+          console.log(`Passive income synced: +${earned} gold over ${Math.floor(deltaSeconds)}s (Rate: ${currentRate}/h)`);
         }
+
       } catch (err) {
-        console.error("Passive income sync error", err);
+        console.warn("Passive income sync error:", err);
       }
-    }, 60000);
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [user, player?.uid, player?.gold, buildings.length, goldLimit, goldPerHour, getGoldLimit, getGoldPerHour]); // Dependencies focus on changes that affect rate or storage
+  }, [user?.uid]);
+
+
   useEffect(() => {
     // Watchdog timer: if loading is still true after 12 seconds, force it to false
     // so the user can at least see the AuthOverlay or a potential error message.
@@ -179,16 +198,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           const updates: any = {};
 
           if (!data.garrison) {
-            data.garrison = { knight: 10, archer: 5, mage: 0, berserk: 0, dragon: 0 };
+            data.garrison = { knight: 10, archer: 5, mage: 0, berserk: 0, dragon: 0, titan: 0 };
             updates.garrison = data.garrison;
             needsUpdate = true;
           } else {
             // Check for missing units
-            if (data.garrison.berserk === undefined || data.garrison.dragon === undefined) {
+            if (data.garrison.berserk === undefined || data.garrison.dragon === undefined || data.garrison.titan === undefined) {
               data.garrison = { 
                 ...data.garrison, 
                 berserk: data.garrison.berserk || 0,
-                dragon: data.garrison.dragon || 0
+                dragon: data.garrison.dragon || 0,
+                titan: data.garrison.titan || 0
               };
               updates.garrison = data.garrison;
               needsUpdate = true;
@@ -245,7 +265,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               archer: 5,
               mage: 0,
               berserk: 0,
-              dragon: 0
+              dragon: 0,
+              titan: 0
             },
             hero: { level: 1, exp: 0, equipment: { weapon: null, armor: null } },
             battleRating: 0, // Will be updated on first load or recalculated
@@ -306,16 +327,30 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const addDiamonds = async (amount: number) => {
+    if (!user || !player) return;
+    try {
+      const playerRef = doc(db, 'players', user.uid);
+      await updateDoc(playerRef, {
+        diamonds: player.diamonds + amount,
+        lastActive: serverTimestamp(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, 'update', `players/${user.uid}`);
+    }
+  };
+
   const expandBase = async () => {
     if (!user || !player) return;
-    const cost = 10;
+    const currentSlots = player.baseSlots || 6;
+    const cost = 10 * Math.pow(2, currentSlots - 6);
     if (player.diamonds < cost) throw new Error("Недостаточно алмазов");
     
     try {
       const playerRef = doc(db, 'players', user.uid);
       await updateDoc(playerRef, {
         diamonds: player.diamonds - cost,
-        baseSlots: player.baseSlots + 2,
+        baseSlots: player.baseSlots + 1,
         lastActive: serverTimestamp(),
       });
     } catch (err) {
@@ -331,7 +366,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const playerRef = doc(db, 'players', user.uid);
       const buildingsRef = collection(db, 'players', user.uid, 'buildings');
 
-      await updateDoc(playerRef, { gold: player.gold - cost });
+      await updateDoc(playerRef, { gold: increment(-cost), lastActive: serverTimestamp() });
       await addDoc(buildingsRef, {
         ownerId: user.uid,
         type,
@@ -349,16 +384,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const building = buildings.find(b => b.id === buildingId);
     if (!building) return;
 
-    const cost = building.level * 500;
+    const cost = Math.floor(500 * Math.pow(1.8, building.level));
     if (player.gold < cost) throw new Error(`Недостаточно золота для улучшения (${cost})`);
 
     try {
       const playerRef = doc(db, 'players', user.uid);
       const buildingRef = doc(db, 'players', user.uid, 'buildings', buildingId);
 
-      await updateDoc(playerRef, { gold: player.gold - cost });
+      await updateDoc(playerRef, { gold: increment(-cost), lastActive: serverTimestamp() });
       await updateDoc(buildingRef, {
-        level: building.level + 1,
+        level: increment(1),
         lastCollectedAt: serverTimestamp()
       });
     } catch (err) {
@@ -379,7 +414,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const newBR = calculateBR({ ...player, garrison: newGarrison });
       
       await updateDoc(playerRef, {
-        gold: player.gold - cost,
+        gold: increment(-cost),
         garrison: newGarrison,
         battleRating: newBR,
         lastActive: serverTimestamp(),
@@ -388,6 +423,37 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       handleFirestoreError(err, 'update', `players/${user.uid}`);
     }
   };
+
+  const recruitAllUnits = async (type: keyof PlayerData['garrison'], costPerUnit: number) => {
+    if (!user || !player) return;
+    
+    const currentTotalUnits = Object.values(player.garrison).reduce((a, b) => a + b, 0);
+    const availableSlots = unitLimit - currentTotalUnits;
+    if (availableSlots <= 0) throw new Error("Нет свободных мест в гарнизоне");
+
+    const affordableCount = Math.floor(player.gold / costPerUnit);
+    const countToRecruit = Math.min(availableSlots, affordableCount);
+    
+    if (countToRecruit <= 0) throw new Error("Недостаточно золота для найма хотя бы одного юнита");
+
+    const cost = countToRecruit * costPerUnit;
+
+    try {
+      const playerRef = doc(db, 'players', user.uid);
+      const newGarrison = { ...player.garrison, [type]: (player.garrison[type] || 0) + countToRecruit };
+      const newBR = calculateBR({ ...player, garrison: newGarrison });
+      
+      await updateDoc(playerRef, {
+        gold: increment(-cost),
+        garrison: newGarrison,
+        battleRating: newBR,
+        lastActive: serverTimestamp(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, 'update', `players/${user.uid}`);
+    }
+  };
+
 
   const updateGarrison = async (newGarrison: PlayerData['garrison']) => {
     if (!user || !player) return;
@@ -412,7 +478,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const playerRef = doc(db, 'players', user.uid);
       const itemsRef = collection(db, 'players', user.uid, 'items');
 
-      await updateDoc(playerRef, { gold: player.gold - item.cost });
+      await updateDoc(playerRef, { gold: increment(-item.cost), lastActive: serverTimestamp() });
       await addDoc(itemsRef, {
         ownerId: user.uid,
         name: item.name,
@@ -455,8 +521,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const buildingRef = doc(db, 'players', user.uid, 'buildings', buildingId);
 
       await deleteDoc(buildingRef);
+      // We will increment the refund amount. Firebase rules prevent going below 0, but selling only adds gold.
+      // However to respect the client's concept of a limit without writing complex rules, we can just do a max fetch or let them exceed slightly.
+      // For now, incrementing refund is safe and avoids races.
       await updateDoc(playerRef, {
-        gold: Math.min(goldLimit, player.gold + refund),
+        gold: increment(refund),
         lastActive: serverTimestamp()
       });
     } catch (err) {
@@ -467,7 +536,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   return (
     <GameContext.Provider value={{ 
       user, player, buildings, items, loading, 
-      addGold, expandBase, buildStructure, upgradeBuilding, sellBuilding, recruitUnit, updateGarrison, buyItem, startPvP, getLeaderboard,
+      addGold, addDiamonds, expandBase, buildStructure, upgradeBuilding, sellBuilding, recruitUnit, recruitAllUnits, updateGarrison, buyItem, startPvP, getLeaderboard,
       goldLimit, unitLimit, goldPerHour
     }}>
       {children}

@@ -5,6 +5,7 @@ import { useGame } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sword, Shield, Heart, Trophy, ChevronRight, ChevronLeft, Skull, Wand2, Zap, Flame, User } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import { formatNumber } from '@/lib/utils';
 
 const UNIT_DATA = {
   knight: { 
@@ -36,16 +37,24 @@ const UNIT_DATA = {
     webp: '/icons/dragon.webp',
     icon: <Flame className="w-5 h-5 text-rose-500" />,
     color: 'rose'
+  },
+  titan: {
+    name: 'Титан',
+    webp: '/icons/titan.webp',
+    icon: <Wand2 className="w-5 h-5 text-emerald-500" />,
+    color: 'emerald'
   }
 };
 
 interface Unit {
   id: string;
-  type: 'knight' | 'archer' | 'mage' | 'berserk' | 'dragon' | 'enemy' | 'boss' | 'hero';
+  type: 'knight' | 'archer' | 'mage' | 'berserk' | 'dragon' | 'titan' | 'enemy' | 'boss' | 'hero';
   displayName: string;
   side: 'player' | 'enemy';
+  count: number;
   hp: number;
   maxHp: number;
+  baseHp: number;
   atk: number;
   def: number;
   atkFreq: number;
@@ -65,85 +74,144 @@ export interface CombatScenario {
 type BattleState = 'preparation' | 'fighting' | 'finished';
 
 export default function CombatView({ scenario, onBack }: { scenario: CombatScenario, onBack: () => void }) {
-  const { player, updateGarrison, addGold } = useGame();
+  const { player, updateGarrison, addGold, addDiamonds } = useGame();
   const [battleState, setBattleState] = useState<BattleState>('preparation');
-  const [selectedUnits, setSelectedUnits] = useState({ knight: 0, archer: 0, mage: 0, berserk: 0, dragon: 0 });
+  const [selectedUnits, setSelectedUnits] = useState({ knight: 0, archer: 0, mage: 0, berserk: 0, dragon: 0, titan: 0 });
   const [activeUnits, setActiveUnits] = useState<Unit[]>([]);
-  const [initialGarrison, setInitialGarrison] = useState({ knight: 0, archer: 0, mage: 0, berserk: 0, dragon: 0 });
+  const [initialGarrison, setInitialGarrison] = useState({ knight: 0, archer: 0, mage: 0, berserk: 0, dragon: 0, titan: 0 });
+  const [combatRewards, setCombatRewards] = useState<{ gold: number, diamonds: number } | null>(null);
+
+  // Refs for logic loop to prevent re-renders breaking the interval
+  const unitsRef = React.useRef<Unit[]>([]);
+  const depsRef = React.useRef({ player, initialGarrison, updateGarrison, addGold, addDiamonds, scenario, battleState, setCombatRewards });
+
+  // Update dependencies in ref so the loop always sees fresh closures
+  useEffect(() => {
+    depsRef.current = { player, initialGarrison, updateGarrison, addGold, addDiamonds, scenario, battleState, setCombatRewards };
+  });
 
   useEffect(() => {
-    if (!player || battleState !== 'fighting') return;
+    if (battleState !== 'fighting') return;
 
-    const interval = setInterval(() => {
-      setActiveUnits(prev => {
-        const next = prev.map(u => ({ ...u, pos: { ...u.pos } }));
+    let animationFrameId: number;
+    let lastTick = Date.now();
+    let combatFinished = false;
+
+    const gameLoop = () => {
+      if (combatFinished) return;
+
+      const currentTime = Date.now();
+      const dt = currentTime - lastTick;
+
+      // Run logic physics ~20 times per second
+      if (dt >= 50) {
+        lastTick = currentTime;
+
         let playerAlive = 0;
         let enemyAlive = 0;
 
-        const currentTime = Date.now();
-
-        next.forEach(u => {
-          if (u.hp <= 0) return;
+        unitsRef.current.forEach(u => {
+          if (u.count <= 0) return;
           if (u.side === 'player') playerAlive++; else enemyAlive++;
 
-          const enemies = next.filter(target => target.side !== u.side && target.hp > 0);
+          const enemies = unitsRef.current.filter(target => target.side !== u.side && target.count > 0);
           if (enemies.length === 0) return;
 
-          const closest = enemies.reduce((prev, curr) => {
-            const d1 = Math.sqrt(Math.pow(u.pos.x - prev.pos.x, 2) + Math.pow(u.pos.y - prev.pos.y, 2));
+          const closest = enemies.reduce((currClosest, curr) => {
+            const d1 = Math.sqrt(Math.pow(u.pos.x - currClosest.pos.x, 2) + Math.pow(u.pos.y - currClosest.pos.y, 2));
             const d2 = Math.sqrt(Math.pow(u.pos.x - curr.pos.x, 2) + Math.pow(u.pos.y - curr.pos.y, 2));
-            return d1 < d2 ? prev : curr;
-          });
+            return d1 < d2 ? currClosest : curr;
+          }, enemies[0]);
 
           const dist = Math.sqrt(Math.pow(u.pos.x - closest.pos.x, 2) + Math.pow(u.pos.y - closest.pos.y, 2));
 
-          if (dist <= u.range) {
-            const cooldown = (1 / u.atkFreq) * 1000;
+          if (dist <= (u.range || 1)) {
+            const cooldown = (1 / (u.atkFreq || 1)) * 1000;
             if (currentTime - u.lastAtkTime >= cooldown) {
-               // Calculate damage with defense reduction
-               const reduction = Math.min(0.9, closest.def / 1000);
-               const finalDamage = u.atk * (1 - reduction);
-               closest.hp = Math.max(0, closest.hp - finalDamage);
+               const reduction = Math.min(0.9, (closest.def || 0) / 1000);
+               const groupDamage = (u.atk || 1) * u.count * (1 - reduction);
+               closest.hp = Math.max(0, closest.hp - groupDamage);
+               closest.count = Math.ceil(closest.hp / closest.baseHp);
                u.lastAtkTime = currentTime;
             }
-          } else {
-            u.pos.x += ((closest.pos.x - u.pos.x) / dist) * u.speed;
-            u.pos.y += ((closest.pos.y - u.pos.y) / dist) * u.speed;
+          } else if (dist > 0.1) {
+            u.pos.x += ((closest.pos.x - u.pos.x) / dist) * (u.speed || 0.05);
+            u.pos.y += ((closest.pos.y - u.pos.y) / dist) * (u.speed || 0.05);
           }
         });
 
-        if (playerAlive === 0 || enemyAlive === 0) {
-          setBattleState('finished');
-          if (!player) return next;
+        // Copy array for React render triggering
+        setActiveUnits([...unitsRef.current]);
 
-          const survivors: any = { knight: 0, archer: 0, mage: 0, berserk: 0, dragon: 0 };
-          next.forEach(u => {
-            if (u.side === 'player' && u.hp > 0) {
-              if (survivors[u.type] !== undefined) survivors[u.type]++;
+        if (playerAlive === 0 || enemyAlive === 0) {
+          combatFinished = true;
+          setBattleState('finished');
+          
+          const d = depsRef.current;
+          if (d.player) {
+            const survivors: any = { knight: 0, archer: 0, mage: 0, berserk: 0, dragon: 0, titan: 0 };
+            unitsRef.current.forEach(u => {
+              if (u.side === 'player' && u.count > 0 && survivors.hasOwnProperty(u.type)) {
+                survivors[u.type] += u.count;
+              }
+            });
+            d.updateGarrison({
+              knight: (d.player.garrison?.knight || 0) - (d.initialGarrison.knight - survivors.knight),
+              archer: (d.player.garrison?.archer || 0) - (d.initialGarrison.archer - survivors.archer),
+              mage: (d.player.garrison?.mage || 0) - (d.initialGarrison.mage - survivors.mage),
+              berserk: (d.player.garrison?.berserk || 0) - (d.initialGarrison.berserk - survivors.berserk),
+              dragon: (d.player.garrison?.dragon || 0) - (d.initialGarrison.dragon - survivors.dragon),
+              titan: (d.player.garrison?.titan || 0) - (d.initialGarrison.titan - survivors.titan),
+            });
+            if (enemyAlive === 0) {
+              let earnedGold = 0;
+              let earnedDiamonds = 0;
+
+              if (d.scenario.type === 'pvp') {
+                earnedGold = 1000;
+              } else if (d.scenario.type === 'mobs') {
+                earnedGold = 300;
+              } else if (d.scenario.type === 'boss') {
+                const bStats: Record<string, number> = {
+                  'Гигантский Паук': 5000,
+                  'Древний Голем': 15000,
+                  'Повелитель Бездны': 50000,
+                  'Император Драконов': 200000,
+                };
+                earnedGold = bStats[d.scenario.enemyName] || 5000;
+
+                const dropRates: Record<string, number> = {
+                  'Гигантский Паук': 0.0025,
+                  'Древний Голем': 0.33,
+                  'Повелитель Бездны': 0.50,
+                  'Император Драконов': 0.80,
+                };
+                const dropRate = dropRates[d.scenario.enemyName] || 0;
+                if (Math.random() < dropRate) {
+                  earnedDiamonds = 1;
+                }
+              }
+
+              if (earnedGold > 0) d.addGold(earnedGold);
+              if (earnedDiamonds > 0) d.addDiamonds(earnedDiamonds);
+              
+              d.setCombatRewards({ gold: earnedGold, diamonds: earnedDiamonds });
+            } else {
+              d.setCombatRewards({ gold: 0, diamonds: 0 }); // Loss
             }
-          });
-          
-          const newGarrison = {
-            knight: (player.garrison.knight - initialGarrison.knight) + survivors.knight,
-            archer: (player.garrison.archer - initialGarrison.archer) + survivors.archer,
-            mage: (player.garrison.mage - initialGarrison.mage) + survivors.mage,
-            berserk: (player.garrison.berserk - initialGarrison.berserk) + survivors.berserk,
-            dragon: (player.garrison.dragon - initialGarrison.dragon) + survivors.dragon,
-          };
-          updateGarrison(newGarrison);
-          
-          if (enemyAlive === 0) {
-            const reward = scenario.type === 'pvp' ? 1000 : scenario.type === 'mobs' ? 300 : 5000;
-            addGold(reward);
           }
         }
+      }
 
-        return next;
-      });
-    }, 50);
+      if (!combatFinished) {
+        animationFrameId = requestAnimationFrame(gameLoop);
+      }
+    };
 
-    return () => clearInterval(interval);
-  }, [battleState, player, initialGarrison, updateGarrison, addGold, scenario]);
+    animationFrameId = requestAnimationFrame(gameLoop);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [battleState]); // Minimal dependencies to ensure loop never restarts unexpectedly
 
   if (!player) return null;
 
@@ -158,6 +226,7 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
       mage: { hp: 40, atk: 30, def: 3, freq: 0.5, range: 2.5, speed: 0.02, name: 'Маг' },
       berserk: { hp: 50, atk: 50, def: 10, freq: 1.0, range: 0.6, speed: 0.08, name: 'Берсерк' },
       dragon: { hp: 200, atk: 100, def: 30, freq: 0.25, range: 2.0, speed: 0.04, name: 'Дракон' },
+      titan: { hp: 800, atk: 250, def: 100, freq: 0.33, range: 1.0, speed: 0.03, name: 'Титан' },
       hero: { 
         hp: 100 + (player.hero.level * 20), 
         atk: 100 + (player.hero.level * 10), 
@@ -169,46 +238,50 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
       }
     };
 
-    // Spawn Hero (Always)
+    // Spawn Hero (Count 1)
     const h = stats.hero;
     newUnits.push({
       id: 'hero-unit',
       type: 'hero',
       displayName: h.name,
       side: 'player',
+      count: 1,
       hp: h.hp,
       maxHp: h.hp,
+      baseHp: h.hp,
       atk: h.atk,
       def: h.def,
       atkFreq: h.freq,
-      lastAtkTime: 0,
+      lastAtkTime: Date.now(),
       range: h.range,
       speed: h.speed,
       pos: { x: 0.2, y: 2.5 }
     });
 
-    // Spawn Player Units
-    let spawnIdx = 0;
+    // Spawn Player Unit Groups (1 unit block per selected type)
+    let pIdx = 0;
     (Object.keys(selectedUnits) as (keyof typeof selectedUnits)[]).forEach(type => {
       const count = selectedUnits[type];
-      for(let i=0; i<count; i++) {
+      if (count > 0) {
         const s = stats[type];
         newUnits.push({
-          id: `p-${type}-${i}`,
+          id: `p-${type}`,
           type: type as any,
           displayName: s.name,
           side: 'player',
-          hp: s.hp,
-          maxHp: s.hp,
+          count: count,
+          hp: s.hp * count,
+          maxHp: s.hp * count,
+          baseHp: s.hp,
           atk: s.atk,
           def: s.def,
           atkFreq: s.freq,
-          lastAtkTime: 0,
+          lastAtkTime: Date.now(),
           range: s.range,
           speed: s.speed,
-          pos: { x: 0.5 + (Math.random() * 0.5), y: (spawnIdx % 5) + (Math.random() * 0.5) }
+          pos: { x: 0.5 + Math.random() * 0.5, y: 1 + pIdx * 0.8 }
         });
-        spawnIdx++;
+        pIdx++;
       }
     });
 
@@ -217,7 +290,8 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
       const bStats: Record<string, any> = {
         'Гигантский Паук': { atk: 220, def: 200, hp: 5000, freq: 1.0, range: 1.5 },
         'Древний Голем': { atk: 300, def: 300, hp: 10000, freq: 0.5, range: 1.2 },
-        'Повелитель Бездны': { atk: 500, def: 400, hp: 20000, freq: 2.0, range: 2.0 },
+        'Повелитель Бездны': { atk: 500, def: 400, hp: 50000, freq: 2.0, range: 2.0 }, // Усилил немного, так как награда 50к
+        'Император Драконов': { atk: 1200, def: 800, hp: 250000, freq: 2.5, range: 3.0 }, // Новый сверхсложный босс
       };
       const b = bStats[scenario.enemyName] || { atk: 100, def: 50, hp: 1000, freq: 1 };
       
@@ -226,81 +300,90 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
         type: 'boss',
         displayName: scenario.enemyName,
         side: 'enemy',
+        count: 1,
         hp: b.hp,
         maxHp: b.hp,
+        baseHp: b.hp,
         atk: b.atk,
         def: b.def,
         atkFreq: b.freq,
-        lastAtkTime: 0,
+        lastAtkTime: Date.now(),
         range: b.range,
         speed: 0.02,
         pos: { x: 4.0, y: 2.5 }
       });
     } else if (scenario.type === 'pvp' && scenario.enemyGarrison) {
-      // Enemy Hero
       newUnits.push({
         id: 'enemy-hero',
         type: 'boss',
         displayName: scenario.enemyName,
         side: 'enemy',
+        count: 1,
         hp: h.hp,
         maxHp: h.hp,
+        baseHp: h.hp,
         atk: h.atk,
         def: h.def,
         atkFreq: h.freq,
-        lastAtkTime: 0,
+        lastAtkTime: Date.now(),
         range: h.range,
         speed: h.speed,
         pos: { x: 4.5, y: 2.5 }
       });
 
-      let eSpawnIdx = 0;
+      let eIdx = 0;
       Object.entries(scenario.enemyGarrison).forEach(([type, count]) => {
-        for(let i=0; i<count; i++) {
+        if (count > 0) {
           const s = stats[type] || stats.knight;
           newUnits.push({
-            id: `e-${type}-${i}`,
+            id: `e-${type}`,
             type: 'enemy',
             displayName: s.name,
             side: 'enemy',
-            hp: s.hp,
-            maxHp: s.hp,
+            count: count,
+            hp: s.hp * count,
+            maxHp: s.hp * count,
+            baseHp: s.hp,
             atk: s.atk,
             def: s.def,
             atkFreq: s.freq,
-            lastAtkTime: 0,
+            lastAtkTime: Date.now(),
             range: s.range,
             speed: s.speed,
-            pos: { x: 4.5 - (Math.random() * 0.5), y: (eSpawnIdx % 5) + (Math.random() * 0.5) }
+            pos: { x: 4.5 - Math.random() * 0.5, y: 1 + eIdx * 0.8 }
           });
-          eSpawnIdx++;
+          eIdx++;
         }
       });
     } else {
-      // Mobs (Random)
+      // Mobs (Groups)
       const mobTypes = ['knight', 'archer', 'mage'];
-      for(let i=0; i<5; i++) {
+      for(let i=0; i<3; i++) {
         const rType = mobTypes[Math.floor(Math.random() * mobTypes.length)];
         const s = stats[rType];
+        const count = 5 + Math.floor(Math.random() * 10);
         newUnits.push({
           id: `mob-${i}`,
           type: 'enemy',
           displayName: `Монстр ${s.name}`,
           side: 'enemy',
-          hp: s.hp * 1.5,
-          maxHp: s.hp * 1.5,
+          count: count,
+          hp: s.hp * count * 1.5,
+          maxHp: s.hp * count * 1.5,
+          baseHp: s.hp * 1.5,
           atk: s.atk * 1.2,
           def: s.def,
           atkFreq: s.freq,
-          lastAtkTime: 0,
+          lastAtkTime: Date.now(),
           range: s.range,
           speed: s.speed,
-          pos: { x: 4.5 - (Math.random() * 0.5), y: (i % 5) + (Math.random() * 0.5) }
+          pos: { x: 4.5 - Math.random() * 0.5, y: 1 + i * 1.2 }
         });
       }
     }
 
     setActiveUnits(newUnits);
+    unitsRef.current = newUnits.map(u => ({ ...u, pos: { ...u.pos } }));
     setBattleState('fighting');
   };
 
@@ -309,6 +392,11 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
     const available = player.garrison?.[type] || 0;
     const nextValue = Math.max(0, Math.min(available, current + delta));
     setSelectedUnits(prev => ({ ...prev, [type]: nextValue }));
+  };
+
+  const setMaxSelection = (type: keyof typeof selectedUnits) => {
+    const available = player.garrison?.[type] || 0;
+    setSelectedUnits(prev => ({ ...prev, [type]: available }));
   };
 
   return (
@@ -334,13 +422,14 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
               <h3 className="text-xs font-bold uppercase text-amber-500 mb-6">Выберите отряды</h3>
               
               <div className="space-y-6">
-                {(['knight', 'archer', 'mage', 'berserk', 'dragon'] as const).map(type => (
+                {(['knight', 'archer', 'mage', 'berserk', 'dragon', 'titan'] as const).map(type => (
                   <UnitSelectionRow 
                     key={type} 
                     type={type} 
                     player={player} 
                     selectedUnits={selectedUnits} 
                     onToggle={toggleSelection} 
+                    onSetMax={setMaxSelection}
                   />
                 ))}
               </div>
@@ -349,7 +438,7 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
                 <div className="flex justify-between items-center text-[10px] font-bold uppercase mb-2">
                   <span className="text-slate-500">Общая мощь отряда</span>
                   <span className="text-amber-500">
-                    {selectedUnits.knight * 10 + selectedUnits.archer * 15 + selectedUnits.mage * 25 + selectedUnits.berserk * 20 + selectedUnits.dragon * 100}
+                    {formatNumber(selectedUnits.knight * 10 + selectedUnits.archer * 15 + selectedUnits.mage * 25 + selectedUnits.berserk * 20 + selectedUnits.dragon * 100 + selectedUnits.titan * 400)}
                   </span>
                 </div>
                 <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
@@ -361,7 +450,7 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
             <button 
               disabled={Object.values(selectedUnits).every(v => v === 0)}
               onClick={startBattle}
-              className="mt-4 w-full bg-amber-600 text-slate-950 font-bold py-4 rounded-xl shadow-lg shadow-amber-600/20 active:scale-95 transition-transform uppercase tracking-tighter disabled:opacity-50"
+              className="mt-4 w-full bg-amber-600 text-slate-950 font-bold py-5 md:py-4 rounded-xl shadow-lg shadow-amber-600/20 active:scale-95 transition-transform uppercase tracking-tighter disabled:opacity-50 text-base md:text-sm"
             >
               Вступить в бой
             </button>
@@ -381,12 +470,12 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
             </div>
 
             {/* Units */}
-            {activeUnits.filter(u => u.hp > 0).map(u => (
+            {activeUnits.filter(u => u.count > 0).map(u => (
               <motion.div
                 key={u.id}
                 initial={false}
                 animate={{ left: `${(u.pos.x / 5) * 100}%`, top: `${(u.pos.y / 5) * 100}%` }}
-                className="absolute w-8 h-8 -ml-4 -mt-4 transition-all"
+                className="absolute w-10 h-10 -ml-5 -mt-5 transition-all flex flex-col items-center"
               >
                 <div className={`p-1 border overflow-hidden relative w-full h-full ${
                   u.type === 'hero' ? 'hero-neon bg-blue-950 border-blue-400 z-10 rounded-full' :
@@ -395,6 +484,11 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
                 }`}>
                   <BattleUnitIcon u={u} />
                 </div>
+                {u.type !== 'hero' && (
+                  <div className="bg-slate-900/90 text-[10px] font-bold text-white px-1.5 rounded mt-0.5 border border-slate-700 shadow-md">
+                    x{u.count}
+                  </div>
+                )}
                 <div className="w-full h-1 bg-slate-800 mt-1 rounded-full overflow-hidden border border-black/30">
                   <motion.div 
                     animate={{ width: `${(u.hp / u.maxHp) * 100}%` }}
@@ -428,15 +522,27 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
                     <Trophy className="w-8 h-8 text-amber-500" />
                   </div>
                   <h3 className="text-xl font-display font-bold mb-2 uppercase tracking-tight text-white italic">Триумфальная победа</h3>
-                  <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mb-8 leading-relaxed">Враг повержен. Рубеж зачищен. Добыто 1000 золота!</p>
+                  <p className="text-xs text-slate-500 uppercase font-bold tracking-widest leading-relaxed">
+                    Враг повержен. Рубеж зачищен. Добыто {formatNumber(combatRewards?.gold || 0)} золота!
+                  </p>
+                  {combatRewards?.diamonds ? (
+                    <p className="text-xs text-cyan-400 uppercase font-bold tracking-widest mt-2 mb-8 leading-relaxed">
+                      И Выпал Алмаз! (+{combatRewards.diamonds})
+                    </p>
+                  ) : (
+                    <div className="mb-8" />
+                  )}
                 </>
               )}
 
               <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 text-left">
                 <h4 className="text-[10px] font-bold uppercase text-slate-600 mb-4 tracking-[0.2em]">Статистика потерь</h4>
                 <div className="space-y-3">
-                  {(['knight', 'archer', 'mage', 'berserk', 'dragon'] as const).map(type => {
-                    const lost = initialGarrison[type] - activeUnits.filter(u => u.side === 'player' && u.type === type && u.hp > 0).length;
+                  {(['knight', 'archer', 'mage', 'berserk', 'dragon', 'titan'] as const).map(type => {
+                    const group = activeUnits.find(u => u.side === 'player' && u.type === type);
+                    const remaining = group && group.count > 0 ? group.count : 0;
+                    const lost = initialGarrison[type] - remaining;
+                    
                     if (initialGarrison[type] === 0) return null;
                     return (
                       <div key={type} className="flex justify-between items-center bg-slate-900/50 p-2 rounded">
@@ -462,7 +568,7 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
   );
 }
 
-function UnitSelectionRow({ type, player, selectedUnits, onToggle }: { type: 'knight'|'archer'|'mage'|'berserk'|'dragon', player: any, selectedUnits: any, onToggle: any }) {
+function UnitSelectionRow({ type, player, selectedUnits, onToggle, onSetMax }: { type: 'knight'|'archer'|'mage'|'berserk'|'dragon'|'titan', player: any, selectedUnits: any, onToggle: any, onSetMax: any }) {
   const [imgError, setImgError] = useState(false);
   const data = UNIT_DATA[type];
 
@@ -475,6 +581,7 @@ function UnitSelectionRow({ type, player, selectedUnits, onToggle }: { type: 'kn
               src={data.webp} 
               alt={data.name} 
               fill 
+              sizes="40px"
               className="object-contain p-1.5"
               onError={() => setImgError(true)}
               referrerPolicy="no-referrer"
@@ -489,10 +596,18 @@ function UnitSelectionRow({ type, player, selectedUnits, onToggle }: { type: 'kn
         </div>
       </div>
 
-      <div className="flex items-center gap-4 bg-slate-950 p-1 rounded-lg border border-slate-800">
-        <button onClick={() => onToggle(type, -1)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white"><ChevronLeft /></button>
-        <span className="font-mono font-bold text-amber-500 w-8 text-center">{selectedUnits[type]}</span>
-        <button onClick={() => onToggle(type, 1)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white"><ChevronRight /></button>
+      <div className="flex items-center gap-2">
+        <button 
+          onClick={() => onSetMax(type)}
+          className="px-2 py-1 bg-amber-950/50 border border-amber-900/50 text-amber-500 text-[9px] font-bold uppercase tracking-widest rounded hover:bg-amber-900/50 transition-colors"
+        >
+          Max
+        </button>
+        <div className="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800">
+          <button onClick={() => onToggle(type, -1)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white"><ChevronLeft /></button>
+          <span className="font-mono font-bold text-amber-500 w-8 text-center">{selectedUnits[type]}</span>
+          <button onClick={() => onToggle(type, 1)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white"><ChevronRight /></button>
+        </div>
       </div>
     </div>
   );
@@ -500,7 +615,7 @@ function UnitSelectionRow({ type, player, selectedUnits, onToggle }: { type: 'kn
 
 function BattleUnitIcon({ u }: { u: Unit }) {
   const [imgError, setImgError] = useState(false);
-  const type = u.type as 'knight' | 'archer' | 'mage' | 'berserk' | 'dragon' | 'enemy' | 'boss' | 'hero';
+  const type = u.type as 'knight' | 'archer' | 'mage' | 'berserk' | 'dragon' | 'titan' | 'enemy' | 'boss' | 'hero';
   const data = (type !== 'enemy' && type !== 'boss' && type !== 'hero') ? UNIT_DATA[type] : null;
 
   if (type === 'hero') {
@@ -511,6 +626,7 @@ function BattleUnitIcon({ u }: { u: Unit }) {
              src="/icons/hero/hero.webp" 
              alt="Hero" 
              fill 
+             sizes="32px"
              className="object-cover"
              onError={() => setImgError(true)}
              referrerPolicy="no-referrer"
@@ -530,6 +646,7 @@ function BattleUnitIcon({ u }: { u: Unit }) {
          u.type === 'mage' ? <Wand2 className="w-4 h-4" /> : 
          u.type === 'berserk' ? <Zap className="w-4 h-4" /> :
          u.type === 'dragon' ? <Flame className="w-4 h-4" /> :
+         u.type === 'titan' ? <Wand2 className="w-4 h-4 text-emerald-500" /> :
          u.type === 'boss' ? <Skull className="w-6 h-6 text-rose-500 animate-pulse" /> :
          <Skull className="w-4 h-4" />}
       </div>

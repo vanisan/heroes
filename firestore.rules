@@ -63,7 +63,7 @@ service cloud.firestore {
 
       // Sub-collections
       match /buildings/{buildingId} {
-        allow read: if isOwner(playerId);
+        allow read, list: if isOwner(playerId);
         allow create: if isOwner(playerId) && isValidBuilding(incoming(), playerId) &&
                       get(/databases/$(database)/documents/players/$(playerId)).data.baseSlots > incoming().slotIndex;
         allow update: if isOwner(playerId) && isValidBuilding(incoming(), playerId) &&
@@ -74,12 +74,12 @@ service cloud.firestore {
       }
 
       match /troops/{troopId} {
-        allow read: if isOwner(playerId);
+        allow read, list: if isOwner(playerId);
         allow write: if isOwner(playerId) && isValidTroop(incoming(), playerId);
       }
 
       match /items/{itemId} {
-        allow read: if isOwner(playerId);
+        allow read, list: if isOwner(playerId);
         allow write: if isOwner(playerId) && incoming().ownerId == playerId;
       }
     }

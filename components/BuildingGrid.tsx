@@ -4,7 +4,7 @@ import { useGame, BuildingData } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Hammer, X, Pickaxe, Landmark, Sword, Warehouse, Gem, Coins, Trash2 } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
-
+import { formatNumber } from '@/lib/utils';
 import Image from 'next/image';
 
 const BUILDING_TYPES = [
@@ -42,7 +42,7 @@ const BUILDING_TYPES = [
     webp: '/icons/granary.webp', 
     cost: 150, 
     color: 'emerald',
-    description: 'Увеличивает вместимость золота на +5к (умножается при улучшении).'
+    description: 'Вместимость золота: (5000 * уровень) + 5000.'
   },
 ] as const;
 
@@ -64,7 +64,9 @@ export default function BuildingGrid() {
 
       let totalGold = 0;
       goldMines.forEach(mine => {
-        const amount = Math.pow(2, mine.level - 1);
+        // Match the getGoldPerHour formula: 500 * (1.5 ^ (level - 1)) / 720 ticks per hour
+        const hourlyRate = 500 * Math.pow(1.5, mine.level - 1);
+        const amount = Math.max(1, Math.floor(hourlyRate / 720)); 
         totalGold += amount;
         
         // Trigger local animation events
@@ -112,11 +114,11 @@ export default function BuildingGrid() {
         <button 
           onClick={handleExpand}
           className={`flex items-center gap-1.5 px-3 py-1 rounded text-[10px] font-bold active:scale-95 transition-transform uppercase tracking-tighter border
-            ${player.diamonds >= 10 ? 'bg-cyan-900/30 border-cyan-500/30 text-cyan-400' : 'bg-slate-900 border-slate-800 text-slate-500'}
+            ${player.diamonds >= 10 * Math.pow(2, (player.baseSlots || 6) - 6) ? 'bg-cyan-900/30 border-cyan-500/30 text-cyan-400' : 'bg-slate-900 border-slate-800 text-slate-500'}
           `}
         >
           <Plus className="w-2.5 h-2.5" />
-          Расширить (10 <Gem className="w-2.5 h-2.5 inline" />)
+          Расширить ({formatNumber(10 * Math.pow(2, (player.baseSlots || 6) - 6))} <Gem className="w-2.5 h-2.5 inline" />)
         </button>
       </div>
 
@@ -234,7 +236,7 @@ function BuildingSlot({ slot, building, onSelectBuilding, onSelectEmpty }: { slo
             exit={{ opacity: 0 }}
             className="absolute z-10 text-amber-500 font-mono font-bold pointer-events-none"
           >
-            +{tap.amount}
+            +{formatNumber(tap.amount)}
           </motion.div>
         ))}
       </AnimatePresence>
@@ -288,6 +290,7 @@ function BuildingIcon({ type, level }: { type: string, level: number }) {
             src={config.webp} 
             alt={names[type]} 
             fill 
+            sizes="48px"
             className="object-contain"
             onError={() => setImgError(true)}
             referrerPolicy="no-referrer"
@@ -349,7 +352,7 @@ function BuildModal({ slot, onClose, onBuild }: { slot: number, onClose: () => v
                     </p>
                     <div className="flex items-center gap-1 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800">
                       <Coins className={`w-3 h-3 ${canAfford ? 'text-amber-500' : 'text-slate-600'}`} />
-                      <span className={`text-[11px] font-mono font-bold ${canAfford ? 'text-amber-500' : 'text-slate-600'}`}>{b.cost}</span>
+                      <span className={`text-[11px] font-mono font-bold ${canAfford ? 'text-amber-500' : 'text-slate-600'}`}>{b.cost.toLocaleString('ru-RU')}</span>
                     </div>
                   </div>
                   <p className="text-[10px] text-slate-500 leading-tight line-clamp-2 italic">
@@ -378,6 +381,7 @@ function BuildModalIcon({ type }: { type: string }) {
           src={config.webp} 
           alt={config.name} 
           fill 
+          sizes="64px"
           className="object-contain p-2"
           onError={() => setImgError(true)}
           referrerPolicy="no-referrer"
@@ -396,8 +400,8 @@ function InspectModal({ building, onClose, onUpgrade, onSell, onTap }: { buildin
   const config = BUILDING_TYPES.find(b => b.type === building.type);
   if (!config) return null;
 
-  const upgradeCost = building.level * 500;
-  const sellRefund = Math.floor((building.level * 250) / 2);
+  const upgradeCost = Math.floor(500 * Math.pow(1.8, building.level));
+  const sellRefund = Math.floor((500 * Math.pow(1.8, building.level - 1)) / 2);
   const canAfford = (player?.gold || 0) >= upgradeCost;
   const goldPerTap = 1 + (building.level - 1) * 2;
 
@@ -422,9 +426,7 @@ function InspectModal({ building, onClose, onUpgrade, onSell, onTap }: { buildin
           <div className="flex gap-2">
             <button 
               onClick={() => {
-                if(confirm('Вы уверены, что хотите снести это здание?')) {
-                  onSell();
-                }
+                onSell();
               }} 
               className="p-2 bg-rose-950/30 rounded-lg border border-rose-500/30 text-rose-500 hover:bg-rose-900/50 transition-colors"
             >
@@ -438,10 +440,12 @@ function InspectModal({ building, onClose, onUpgrade, onSell, onTap }: { buildin
 
         <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700 mb-6">
            <p className="text-xs text-slate-400 mb-3 leading-relaxed">{config.description}</p>
-           <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-500">
-             <Coins className="w-3 h-3 text-amber-500" />
-             Доход за тап: <span className="text-white">+{goldPerTap} золота</span>
-           </div>
+           {building.type === 'gold_mine' && (
+             <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-500">
+               <Coins className="w-3 h-3 text-amber-500" />
+               Доход за тап: <span className="text-white">+{formatNumber(goldPerTap)} золота</span>
+             </div>
+           )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -466,7 +470,7 @@ function InspectModal({ building, onClose, onUpgrade, onSell, onTap }: { buildin
           >
             <Plus className="w-5 h-5" />
             <span className="text-[10px] font-bold uppercase whitespace-nowrap">Улучшить</span>
-            <span className="text-[9px] opacity-70">{upgradeCost} 💰</span>
+            <span className="text-[9px] opacity-70">{formatNumber(upgradeCost)} 💰</span>
           </button>
         </div>
       </motion.div>

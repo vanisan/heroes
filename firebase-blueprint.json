@@ -33,7 +33,8 @@
             "archer": { "type": "integer" },
             "mage": { "type": "integer" },
             "berserk": { "type": "integer" },
-            "dragon": { "type": "integer" }
+            "dragon": { "type": "integer" },
+            "titan": { "type": "integer" }
           }
         },
         "createdAt": { "type": "string", "format": "date-time" },

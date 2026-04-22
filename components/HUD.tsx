@@ -3,6 +3,7 @@
 import { useGame } from '@/lib/GameContext';
 import { Coins, Gem, User as UserIcon, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { formatNumber } from '@/lib/utils';
 
 export default function HUD() {
   const { player, goldLimit, goldPerHour } = useGame();
@@ -17,7 +18,7 @@ export default function HUD() {
           value={player.gold} 
           limit={goldLimit}
           color="amber"
-          label={`${goldPerHour.toLocaleString()}/ч`}
+          label={`${formatNumber(goldPerHour)}/ч`}
         />
         <ResourceBox 
           icon="💎" 
@@ -27,7 +28,7 @@ export default function HUD() {
         />
         <div className="flex flex-col items-start bg-slate-800/80 rounded px-2 py-0.5 border border-amber-500/20">
           <span className="text-[10px] text-amber-500/70 font-bold uppercase tracking-tight leading-none">БР</span>
-          <span className="text-[11px] font-mono font-black text-amber-400">{(player.battleRating || 0).toLocaleString()}</span>
+          <span className="text-[11px] font-mono font-black text-amber-400">{formatNumber(player.battleRating || 0)}</span>
         </div>
       </div>
 
@@ -57,13 +58,13 @@ function ResourceBox({ icon, value, color, limit, label }: { icon: string, value
             animate={{ opacity: 1 }}
             className={`font-mono text-[11px] font-bold ${isNearLimit ? 'text-rose-500' : 'text-slate-200'}`}
           >
-            {value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value.toLocaleString()}
+            {formatNumber(value)}
           </motion.span>
         </AnimatePresence>
       </div>
       {limit && (
         <div className="text-[8px] font-mono text-slate-500 text-right leading-none -mt-0.5">
-          /{limit >= 1000000 ? `${(limit / 1000000).toFixed(1)}M` : limit.toLocaleString()}
+          /{formatNumber(limit)}
         </div>
       )}
     </div>
