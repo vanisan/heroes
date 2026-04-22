@@ -14,15 +14,21 @@ export default function AuthOverlay() {
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
       console.error('Login failed', error);
+      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+      
       if (error.code === 'auth/popup-blocked') {
-        setLoginError('Всплывающее окно заблокировано. Пожалуйста, разрешите всплывающие окна или нажмите кнопку "Открыть в новой вкладке" в правом верхнем углу превью.');
+        setLoginError(`Всплывающее окно заблокировано. Домен: ${currentDomain}. Пожалуйста, разрешите всплывающие окна или нажмите на иконку "Open in new tab".`);
       } else if (error.code === 'auth/unauthorized-domain') {
-        const currentDomain = window.location.hostname;
-        setLoginError(`Домен "${currentDomain}" не авторизован в Firebase. Добавьте его в Firebase Console -> Authentication -> Settings -> Authorized domains.`);
+        setLoginError(`КРИТИЧЕСКАЯ ОШИБКА ДОМЕНА: "${currentDomain}" не в списке разрешенных Firebase. Добавьте его в консоль.`);
       } else {
-        setLoginError('Ошибка входа. Убедитесь, что ваш домен добавлен в список разрешенных в Firebase Console.');
+        setLoginError(`Ошибка входа: ${error.message}. Текущий домен: ${currentDomain}. Проверьте настройки Firebase.`);
       }
     }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Домен скопирован!');
   };
 
   return (
@@ -49,13 +55,25 @@ export default function AuthOverlay() {
         </button>
 
         {loginError && (
-          <motion.p 
+          <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 text-[10px] text-rose-500 font-bold bg-rose-500/10 p-2 rounded border border-rose-500/20"
+            className="mt-4 text-[10px] bg-rose-500/10 p-3 rounded border border-rose-500/20 text-left"
           >
-            {loginError}
-          </motion.p>
+            <p className="text-rose-500 font-bold mb-2">{loginError}</p>
+            <div className="flex flex-col gap-2">
+              <span className="text-slate-500 uppercase text-[9px] font-black">Инфо для копирования:</span>
+              <div className="flex items-center gap-2 bg-black/50 p-2 rounded font-mono text-[11px] text-amber-400 border border-white/5 overflow-hidden">
+                <span className="truncate flex-1">{window.location.hostname}</span>
+                <button 
+                  onClick={() => copyToClipboard(window.location.hostname)}
+                  className="bg-amber-600/20 hover:bg-amber-600/40 text-amber-500 px-2 py-1 rounded text-[9px] font-bold border border-amber-600/30 shrink-0"
+                >
+                  COPY
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
         <p className="mt-6 text-[9px] text-slate-600 uppercase tracking-[0.2em] font-bold">
           Защищенная игровая сессия
