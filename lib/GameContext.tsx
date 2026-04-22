@@ -17,8 +17,8 @@ interface PlayerData {
     level: number;
     exp: number;
     equipment: {
-      weapon: string | null;
-      armor: string | null;
+      weapon: any | null;
+      armor: any | null;
     };
   };
   garrison: {
@@ -55,7 +55,11 @@ interface GameContextType {
   recruitUnit: (type: keyof PlayerData['garrison'], count: number, cost: number) => Promise<void>;
   recruitAllUnits: (type: keyof PlayerData['garrison'], costPerUnit: number) => Promise<void>;
   updateGarrison: (garrison: PlayerData['garrison']) => Promise<void>;
-  buyItem: (item: { name: string, rarity: string, stats: any, cost: number, icon: string }) => Promise<void>;
+  buyItem: (item: { name: string, type: 'weapon'|'armor', rarity: string, stats: any, cost: number, icon: string }) => Promise<void>;
+  equipItem: (item: any) => Promise<void>;
+  unequipItem: (slot: 'weapon' | 'armor') => Promise<void>;
+  sellItem: (itemId: string, refund: number) => Promise<void>;
+  upgradeItem: (itemId: string, cost: number) => Promise<void>;
   startPvP: (opponentId: string) => Promise<void>;
   getLeaderboard: () => Promise<any[]>;
   sellBuilding: (buildingId: string) => Promise<void>;
@@ -470,7 +474,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const buyItem = async (item: { name: string, rarity: string, stats: any, cost: number, icon: string }) => {
+  const buyItem = async (item: { name: string, type: 'weapon'|'armor', rarity: string, stats: any, cost: number, icon: string }) => {
     if (!user || !player) return;
     if (player.gold < item.cost) throw new Error("Недостаточно золота");
 
@@ -482,13 +486,102 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       await addDoc(itemsRef, {
         ownerId: user.uid,
         name: item.name,
+        type: item.type,
         rarity: item.rarity,
         stats: item.stats,
         icon: item.icon,
+        level: 1,
         createdAt: serverTimestamp()
       });
     } catch (err) {
       handleFirestoreError(err, 'write', `players/${user.uid}/items`);
+    }
+  };
+
+  const equipItem = async (item: any) => {
+    if (!user || !player || !item || !item.type) return;
+    const playerRef = doc(db, 'players', user.uid);
+    try {
+      const newEquip = { ...player.hero.equipment, [item.type]: item };
+      await updateDoc(playerRef, {
+        'hero.equipment': newEquip,
+        lastActive: serverTimestamp()
+      });
+    } catch(err) {
+      handleFirestoreError(err, 'update', `players/${user.uid}`);
+    }
+  };
+
+  const unequipItem = async (slot: 'weapon'|'armor') => {
+    if (!user || !player) return;
+    const playerRef = doc(db, 'players', user.uid);
+    try {
+      const newEquip = { ...player.hero.equipment, [slot]: null };
+      await updateDoc(playerRef, {
+        'hero.equipment': newEquip,
+        lastActive: serverTimestamp()
+      });
+    } catch(err) {
+      handleFirestoreError(err, 'update', `players/${user.uid}`);
+    }
+  };
+
+  const sellItem = async (itemId: string, refund: number) => {
+    if (!user || !player) return;
+    try {
+      const playerRef = doc(db, 'players', user.uid);
+      const itemRef = doc(db, 'players', user.uid, 'items', itemId);
+      
+      const itemToSell = items.find(i => i.id === itemId);
+      if(itemToSell) {
+         // check if equipped, if yes, unequip
+         if (player.hero.equipment.weapon?.id === itemId) await unequipItem('weapon');
+         if (player.hero.equipment.armor?.id === itemId) await unequipItem('armor');
+      }
+
+      await deleteDoc(itemRef);
+      await updateDoc(playerRef, { 
+        gold: increment(refund),
+        lastActive: serverTimestamp()
+      });
+    } catch(err) {
+      handleFirestoreError(err, 'delete', `players/${user.uid}/items/${itemId}`);
+    }
+  };
+
+  const upgradeItem = async (itemId: string, cost: number) => {
+    if (!user || !player) return;
+    if (player.gold < cost) throw new Error("Недостаточно золота");
+    try {
+      const playerRef = doc(db, 'players', user.uid);
+      const itemRef = doc(db, 'players', user.uid, 'items', itemId);
+      
+      const item = items.find(i => i.id === itemId);
+      if(!item) return;
+
+      const newFields = { level: increment(1) };
+      
+      // Upgrade stats (multiply by ~1.2)
+      if (item.stats) {
+         const newStats: any = {};
+         for (const [k, v] of Object.entries(item.stats)) {
+           newStats[k] = Math.floor((v as number) * 1.2);
+         }
+         (newFields as any).stats = newStats;
+      }
+
+      await updateDoc(playerRef, { gold: increment(-cost), lastActive: serverTimestamp() });
+      await updateDoc(itemRef, newFields);
+
+      // If equipped, re-equip to update stats in hero
+      const typeKey = item.type as 'weapon'|'armor';
+      if (player.hero.equipment[typeKey]?.id === itemId) {
+         const updatedItem = { ...item, level: (item.level||1) + 1, stats: (newFields as any).stats };
+         const newEquip = { ...player.hero.equipment, [typeKey]: updatedItem };
+         await updateDoc(playerRef, { 'hero.equipment': newEquip });
+      }
+    } catch(err) {
+      handleFirestoreError(err, 'update', `players/${user.uid}/items/${itemId}`);
     }
   };
 
@@ -536,7 +629,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   return (
     <GameContext.Provider value={{ 
       user, player, buildings, items, loading, 
-      addGold, addDiamonds, expandBase, buildStructure, upgradeBuilding, sellBuilding, recruitUnit, recruitAllUnits, updateGarrison, buyItem, startPvP, getLeaderboard,
+      addGold, addDiamonds, expandBase, buildStructure, upgradeBuilding, sellBuilding, recruitUnit, recruitAllUnits, updateGarrison, buyItem, equipItem, unequipItem, sellItem, upgradeItem, startPvP, getLeaderboard,
       goldLimit, unitLimit, goldPerHour
     }}>
       {children}

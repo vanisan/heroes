@@ -65,6 +65,7 @@ export default function ShopView() {
     try {
       await buyItem({
         name: item.name,
+        type: item.type as any,
         rarity: item.rarity,
         stats: item.stats,
         cost: item.cost,

@@ -228,9 +228,9 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
       dragon: { hp: 200, atk: 100, def: 30, freq: 0.25, range: 2.0, speed: 0.04, name: 'Дракон' },
       titan: { hp: 800, atk: 250, def: 100, freq: 0.33, range: 1.0, speed: 0.03, name: 'Титан' },
       hero: { 
-        hp: 100 + (player.hero.level * 20), 
-        atk: 100 + (player.hero.level * 10), 
-        def: 100 + (player.hero.level * 5), 
+        hp: 100 + (player.hero.level * 20) + (player.hero.equipment.weapon?.stats?.hp || 0) + (player.hero.equipment.armor?.stats?.hp || 0), 
+        atk: 100 + (player.hero.level * 10) + (player.hero.equipment.weapon?.stats?.attack || 0) + (player.hero.equipment.armor?.stats?.attack || 0), 
+        def: 100 + (player.hero.level * 5) + (player.hero.equipment.weapon?.stats?.defense || 0) + (player.hero.equipment.armor?.stats?.defense || 0), 
         freq: 1.0, 
         range: 0.8, 
         speed: 0.06, 
@@ -416,9 +416,9 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="flex-1 flex flex-col"
+            className="flex-1 flex flex-col min-h-0"
           >
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex-1">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-y-auto flex-1 h-0 mb-4">
               <h3 className="text-xs font-bold uppercase text-amber-500 mb-6">Выберите отряды</h3>
               
               <div className="space-y-6">
@@ -450,7 +450,7 @@ export default function CombatView({ scenario, onBack }: { scenario: CombatScena
             <button 
               disabled={Object.values(selectedUnits).every(v => v === 0)}
               onClick={startBattle}
-              className="mt-4 w-full bg-amber-600 text-slate-950 font-bold py-5 md:py-4 rounded-xl shadow-lg shadow-amber-600/20 active:scale-95 transition-transform uppercase tracking-tighter disabled:opacity-50 text-base md:text-sm"
+              className="shrink-0 w-full bg-amber-600 text-slate-950 font-bold py-4 rounded-xl shadow-lg shadow-amber-600/20 active:scale-95 transition-transform uppercase tracking-tighter disabled:opacity-50 text-sm"
             >
               Вступить в бой
             </button>

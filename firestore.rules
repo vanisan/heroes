@@ -80,7 +80,8 @@ service cloud.firestore {
 
       match /items/{itemId} {
         allow read, list: if isOwner(playerId);
-        allow write: if isOwner(playerId) && incoming().ownerId == playerId;
+        allow create, update: if isOwner(playerId) && incoming().ownerId == playerId;
+        allow delete: if isOwner(playerId);
       }
     }
 
