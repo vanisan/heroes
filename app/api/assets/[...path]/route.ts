@@ -7,7 +7,7 @@ export async function GET(
   props: { params: Promise<{ path: string[] }> }
 ) {
   const { path: pathSegments } = await props.params;
-  const filePath = path.join(process.cwd(), 'public', 'game-assets', ...pathSegments);
+  const filePath = path.join(process.cwd(), 'public', 'icons', ...pathSegments);
   
   if (!fs.existsSync(filePath)) {
     return new NextResponse('Not Found', { status: 404 });
