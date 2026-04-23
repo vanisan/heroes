@@ -14,7 +14,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 50, 
     hp: 30, atk: 5, def: 10,
     icon: <Shield className="w-5 h-5" />,
-    webp: '/api/assets/knight.webp',
+    webp: '/api/get-image?name=knight.webp',
     color: 'amber'
   },
   { 
@@ -24,7 +24,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 40, 
     hp: 20, atk: 10, def: 5,
     icon: <Sword className="w-5 h-5 rotate-45" />,
-    webp: '/api/assets/archer.webp',
+    webp: '/api/get-image?name=archer.webp',
     color: 'blue'
   },
   { 
@@ -34,7 +34,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 150, 
     hp: 40, atk: 30, def: 3,
     icon: <Wand2 className="w-5 h-5" />,
-    webp: '/api/assets/mage.webp',
+    webp: '/api/get-image?name=mage.webp',
     color: 'purple'
   },
   { 
@@ -44,7 +44,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 200, 
     hp: 50, atk: 50, def: 10,
     icon: <Zap className="w-5 h-5" />,
-    webp: '/api/assets/berserk.webp',
+    webp: '/api/get-image?name=berserk.webp',
     color: 'orange'
   },
   { 
@@ -54,7 +54,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 700, 
     hp: 200, atk: 100, def: 30,
     icon: <Flame className="w-5 h-5" />,
-    webp: '/api/assets/dragon.webp',
+    webp: '/api/get-image?name=dragon.webp',
     color: 'rose'
   },
   {
@@ -64,7 +64,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 5000,
     hp: 800, atk: 250, def: 100,
     icon: <Wand2 className="w-5 h-5" />, // placeholder icon, visual relies on webp
-    webp: '/api/assets/titan.webp',
+    webp: '/api/get-image?name=titan.webp',
     color: 'emerald'
   }
 ];

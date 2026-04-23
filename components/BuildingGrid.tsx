@@ -11,7 +11,7 @@ const BUILDING_TYPES = [
     type: 'gold_mine', 
     name: 'Золотой рудник', 
     icon: <Pickaxe className="w-6 h-6" />, 
-    webp: '/api/assets/mine.webp', 
+    webp: '/api/get-image?name=mine.webp', 
     cost: 100, 
     color: 'amber',
     description: 'Добывает золото для казны.'
@@ -20,7 +20,7 @@ const BUILDING_TYPES = [
     type: 'town_hall', 
     name: 'Ратуша', 
     icon: <Landmark className="w-6 h-6" />, 
-    webp: '/api/assets/hall.webp', 
+    webp: '/api/get-image?name=hall.webp', 
     cost: 500, 
     color: 'blue',
     description: 'Центр вашего города. Позволяет расширяться.'
@@ -29,7 +29,7 @@ const BUILDING_TYPES = [
     type: 'barracks', 
     name: 'Казармы', 
     icon: <Sword className="w-6 h-6" />, 
-    webp: '/api/assets/barracks.webp', 
+    webp: '/api/get-image?name=barracks.webp', 
     cost: 250, 
     color: 'red',
     description: 'Увеличивает лимит армии на +20 (умножается при улучшении).'
@@ -38,7 +38,7 @@ const BUILDING_TYPES = [
     type: 'granary', 
     name: 'Амбар', 
     icon: <Warehouse className="w-6 h-6" />, 
-    webp: '/api/assets/granary.webp', 
+    webp: '/api/get-image?name=granary.webp', 
     cost: 150, 
     color: 'emerald',
     description: 'Вместимость золота: (5000 * уровень) + 5000.'
