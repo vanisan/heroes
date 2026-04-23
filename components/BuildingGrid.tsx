@@ -279,17 +279,27 @@ function BuildingIcon({ type, level }: { type: string, level: number }) {
     granary: 'Амбар'
   };
 
+  // Сбрасываем ошибку при смене типа здания (например, при постройке нового на том же месте)
+  useEffect(() => {
+    setImgError(false);
+  }, [type]);
+
   if (!config) return null;
+
+  const imagePath = config.webp;
 
   return (
     <div className="flex flex-col items-center gap-0.5 text-center px-1">
       <div className="relative w-12 h-12 mb-1 flex items-center justify-center">
-        {!imgError && config.webp ? (
+        {!imgError && imagePath ? (
           <img 
-            src={config.webp} 
+            src={imagePath} 
             alt={names[type]} 
+            width={48}
+            height={48}
             className="w-full h-full object-contain drop-shadow-md"
-            onError={() => {
+            onError={(e) => {
+              console.error(`[IMG-FAIL] ${imagePath} for ${type}. Full URL:`, (e.target as HTMLImageElement).src);
               setImgError(true);
             }}
           />

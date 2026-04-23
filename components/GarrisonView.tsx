@@ -138,17 +138,29 @@ function UnitRow({ unit, player, recruitUnit, recruitAllUnits, setErrorVisible }
   const currentCount = player.garrison?.[unit.type] || 0;
   const canAfford = player.gold >= unit.cost;
 
+  // Reset error on unit type change
+  React.useEffect(() => {
+    setImgError(false);
+  }, [unit.type]);
+
+  const imagePath = unit.webp;
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-white/5 pointer-events-none opacity-0 hover:opacity-100 transition-opacity"></div>
       
       <div className={`w-12 h-12 rounded-xl border border-${unit.color}-500/30 bg-${unit.color}-500/10 flex items-center justify-center text-${unit.color}-400 overflow-hidden relative`}>
-        {!imgError && unit.webp ? (
+        {!imgError && imagePath ? (
           <img 
-            src={unit.webp} 
+            src={imagePath} 
             alt={unit.name} 
+            width={48}
+            height={48}
             className="w-full h-full object-contain p-1"
-            onError={() => setImgError(true)}
+            onError={(e) => {
+              console.error(`[UNIT-IMG-FAIL] ${imagePath} for ${unit.type}. Full URL:`, (e.target as HTMLImageElement).src);
+              setImgError(true);
+            }}
           />
         ) : (
           unit.icon
