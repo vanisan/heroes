@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Sword, User, Package, Star, Heart, Zap, ChevronRight, X, Coins, ArrowUp } from 'lucide-react';
 import React, { useState } from 'react';
 import { formatNumber } from '@/lib/utils';
+import { ICONS } from '@/lib/assets';
 
 export default function HeroView() {
   const { player, items, equipItem, unequipItem, sellItem, upgradeItem } = useGame();
@@ -72,7 +73,7 @@ export default function HeroView() {
            <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-900 shadow-xl flex items-center justify-center text-5xl relative overflow-hidden">
               {!imgError ? (
                 <img 
-                  src="/api/assets/hero/hero.webp" 
+                  src={ICONS.hero.src} 
                   alt="Hero" 
                   className="w-full h-full object-cover" 
                   onError={() => setImgError(true)}

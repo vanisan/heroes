@@ -5,6 +5,7 @@ import { useGame } from '@/lib/GameContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sword, Shield, Wand2, Plus, Coins, Flame, Zap, Heart } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
+import { ICONS } from '@/lib/assets';
 
 const UNIT_DESCRIPTIONS = [
   { 
@@ -14,7 +15,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 50, 
     hp: 30, atk: 5, def: 10,
     icon: <Shield className="w-5 h-5" />,
-    webp: '/icons/knight.webp',
+    webp: ICONS.units.knight.src,
     color: 'amber'
   },
   { 
@@ -24,7 +25,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 40, 
     hp: 20, atk: 10, def: 5,
     icon: <Sword className="w-5 h-5 rotate-45" />,
-    webp: '/icons/archer.webp',
+    webp: ICONS.units.archer.src,
     color: 'blue'
   },
   { 
@@ -34,7 +35,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 150, 
     hp: 40, atk: 30, def: 3,
     icon: <Wand2 className="w-5 h-5" />,
-    webp: '/icons/mage.webp',
+    webp: ICONS.units.mage.src,
     color: 'purple'
   },
   { 
@@ -44,7 +45,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 200, 
     hp: 50, atk: 50, def: 10,
     icon: <Zap className="w-5 h-5" />,
-    webp: '/icons/berserk.webp',
+    webp: ICONS.units.berserk.src,
     color: 'orange'
   },
   { 
@@ -54,7 +55,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 700, 
     hp: 200, atk: 100, def: 30,
     icon: <Flame className="w-5 h-5" />,
-    webp: '/icons/dragon.webp',
+    webp: ICONS.units.dragon.src,
     color: 'rose'
   },
   {
@@ -64,7 +65,7 @@ const UNIT_DESCRIPTIONS = [
     cost: 5000,
     hp: 800, atk: 250, def: 100,
     icon: <Wand2 className="w-5 h-5" />, // placeholder icon, visual relies on webp
-    webp: '/icons/titan.webp',
+    webp: ICONS.units.titan.src,
     color: 'emerald'
   }
 ];

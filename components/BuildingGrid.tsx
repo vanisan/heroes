@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Hammer, X, Pickaxe, Landmark, Sword, Warehouse, Gem, Coins, Trash2 } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatNumber } from '@/lib/utils';
+import { ICONS } from '@/lib/assets';
 
 const BUILDING_TYPES = [
   { 
     type: 'gold_mine', 
     name: 'Золотой рудник', 
     icon: <Pickaxe className="w-6 h-6" />, 
-    webp: '/icons/mine.webp', 
+    webp: ICONS.buildings.gold_mine.src, 
     cost: 100, 
     color: 'amber',
     description: 'Добывает золото для казны.'
@@ -20,7 +21,7 @@ const BUILDING_TYPES = [
     type: 'town_hall', 
     name: 'Ратуша', 
     icon: <Landmark className="w-6 h-6" />, 
-    webp: '/icons/hall.webp', 
+    webp: ICONS.buildings.town_hall.src, 
     cost: 500, 
     color: 'blue',
     description: 'Центр вашего города. Позволяет расширяться.'
@@ -29,7 +30,7 @@ const BUILDING_TYPES = [
     type: 'barracks', 
     name: 'Казармы', 
     icon: <Sword className="w-6 h-6" />, 
-    webp: '/icons/barracks.webp', 
+    webp: ICONS.buildings.barracks.src, 
     cost: 250, 
     color: 'red',
     description: 'Увеличивает лимит армии на +20 (умножается при улучшении).'
@@ -38,7 +39,7 @@ const BUILDING_TYPES = [
     type: 'granary', 
     name: 'Амбар', 
     icon: <Warehouse className="w-6 h-6" />, 
-    webp: '/icons/granary.webp', 
+    webp: ICONS.buildings.granary.src, 
     cost: 150, 
     color: 'emerald',
     description: 'Вместимость золота: (5000 * уровень) + 5000.'
