@@ -9,7 +9,7 @@ export const ICONS = {
     granary: { src: '/icons/granary.webp' }
   },
   units: {
-    knight: { src: '/icons/knight.webp' },
+    knight: { src: '/icons/knight.png' },
     archer: { src: '/icons/archer.webp' },
     mage: { src: '/icons/mage.webp' },
     berserk: { src: '/icons/berserk.webp' },
