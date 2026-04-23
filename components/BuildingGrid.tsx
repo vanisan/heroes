@@ -281,18 +281,15 @@ function BuildingIcon({ type, level }: { type: string, level: number }) {
 
   if (!config) return null;
 
-  console.log('[DEBUG] BuildingIcon config:', config);
-
   return (
     <div className="flex flex-col items-center gap-0.5 text-center px-1">
       <div className="relative w-12 h-12 mb-1 flex items-center justify-center">
-        {!imgError ? (
+        {!imgError && config.webp ? (
           <img 
-            src="/icons/mine.webp" 
+            src={config.webp} 
             alt={names[type]} 
             className="w-full h-full object-contain drop-shadow-md"
-            onError={(e) => {
-              console.error('Failed to load HARDCODED image path:', (e.target as HTMLImageElement).src);
+            onError={() => {
               setImgError(true);
             }}
           />
@@ -379,7 +376,7 @@ function BuildModalIcon({ type }: { type: string }) {
     <>
       {!imgError && config.webp ? (
         <img 
-          src={`${config.webp}?v=2`} 
+          src={config.webp} 
           alt={config.name} 
           className="w-full h-full object-contain p-2"
           onError={() => setImgError(true)}
