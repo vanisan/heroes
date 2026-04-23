@@ -16,7 +16,7 @@ const SHOP_ITEMS = [
     cost: 1500,
     description: 'Надежное оружие для начинающего героя.',
     icon: '⚔️',
-    webp: '/icons/items/sword_1.webp'
+    webp: '/game-assets/items/sword_1.webp'
   },
   {
     id: 'armor_1',
@@ -27,7 +27,7 @@ const SHOP_ITEMS = [
     cost: 1200,
     description: 'Легкая броня, не сковывающая движений.',
     icon: '🛡️',
-    webp: '/icons/items/armor_1.webp'
+    webp: '/game-assets/items/armor_1.webp'
   },
   {
     id: 'sword_2',
@@ -38,7 +38,7 @@ const SHOP_ITEMS = [
     cost: 8000,
     description: 'Меч, выкованный в недрах вулкана.',
     icon: '🔥',
-    webp: '/icons/items/sword_2.webp'
+    webp: '/game-assets/items/sword_2.webp'
   },
   {
     id: 'armor_2',
@@ -49,7 +49,7 @@ const SHOP_ITEMS = [
     cost: 7500,
     description: 'Тяжелая сталь для настоящих паладинов.',
     icon: '⛓️',
-    webp: '/icons/items/armor_2.webp'
+    webp: '/game-assets/items/armor_2.webp'
   }
 ];
 

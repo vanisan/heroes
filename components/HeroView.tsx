@@ -72,7 +72,7 @@ export default function HeroView() {
            <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-900 shadow-xl flex items-center justify-center text-5xl relative overflow-hidden">
               {!imgError ? (
                 <img 
-                  src="/icons/hero/hero.webp" 
+                  src="/game-assets/hero/hero.webp" 
                   alt="Hero" 
                   className="w-full h-full object-cover" 
                   onError={() => setImgError(true)}

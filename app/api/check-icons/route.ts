@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 export async function GET() {
-  const iconsPath = path.join(process.cwd(), 'public', 'icons');
+  const iconsPath = path.join(process.cwd(), 'public', 'game-assets');
   try {
     const files = fs.readdirSync(iconsPath);
     const testFile = files.find(f => f.endsWith('.webp'));
